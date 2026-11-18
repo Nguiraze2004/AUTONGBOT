@@ -367,8 +367,63 @@ root.requestApplyInsets()
         return box
     }
 
-    private fun showPage(name: String) {
-        content.removeAllViews()
+    
+private fun showPage(name: String) {
+    content.removeAllViews()
+
+    if (name == "Fila") {
+
+        space(20)
+        content.addView(label("NGUIRAZE NET", 21f, red, true))
+        space(18)
+
+        // PAINEL DO EXECUTOR
+        val executorBox = panel(18)
+
+        executorBox.addView(
+            label("PAINEL DO EXECUTOR", 17f, white, true)
+        )
+        space(12)
+
+        executorBox.addView(
+            label("Executor 1", 15f, white, true)
+        )
+        executorBox.addView(
+            label("Executor 2", 15f, white, true)
+        )
+
+        addPanel(executorBox)
+        space(14)
+
+        // PESQUISA
+        val searchBox = panel(14)
+
+        val search = android.widget.EditText(this).apply {
+            hint = "Pesquisar número ou executor..."
+            setHintTextColor(gray)
+            setTextColor(white)
+            textSize = 14f
+            singleLine = true
+            setPadding(dp(12), dp(12), dp(12), dp(12))
+            background = android.graphics.drawable.GradientDrawable().apply {
+                setColor(Color.rgb(20, 27, 38))
+                cornerRadius = dp(12).toFloat()
+                setStroke(dp(1), Color.rgb(45, 55, 70))
+            }
+        }
+
+        searchBox.addView(
+            search,
+            LinearLayout.LayoutParams(
+                -1,
+                dp(52)
+            )
+        )
+
+        addPanel(searchBox)
+
+    } else {
+
         space(25)
         content.addView(label("NGUIRAZE NET", 21f, red, true))
         space(20)
@@ -383,6 +438,8 @@ root.requestApplyInsets()
         ))
         addPanel(box)
     }
+}
+
 
     private fun updateNavigation(selected: String) {
         navigation.removeAllViews()
