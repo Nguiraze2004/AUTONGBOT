@@ -326,7 +326,11 @@ root.requestApplyInsets()
                 setTextColor(item.second)
                 setTypeface(null, Typeface.BOLD)
                 setPadding(dp(2), dp(10), dp(2), dp(10))
-                setBackgroundColor(card)
+                background = android.graphics.drawable.GradientDrawable().apply {
+    setColor(card)
+    cornerRadius = dp(16).toFloat()
+    setStroke(dp(1), Color.rgb(32, 40, 52))
+                }
             }
 
             row.addView(tile, LinearLayout.LayoutParams(
