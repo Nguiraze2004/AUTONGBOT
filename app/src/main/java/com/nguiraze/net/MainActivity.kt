@@ -32,6 +32,8 @@ class MainActivity : Activity() {
 
         window.statusBarColor = Color.BLACK
         window.navigationBarColor = Color.BLACK
+        window.decorView.systemUiVisibility =
+    View.SYSTEM_UI_FLAG_LAYOUT_STABLE
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
