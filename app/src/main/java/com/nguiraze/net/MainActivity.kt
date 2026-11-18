@@ -421,6 +421,38 @@ private fun showPage(name: String) {
         )
 
         addPanel(searchBox)
+        
+        space(10)
+
+        // INDICADORES EM UMA ÚNICA FILA
+
+        val statusRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+        }
+
+        fun statusCard(title: String, color: Int): LinearLayout {
+            val card = panel(8)
+            card.gravity = android.view.Gravity.CENTER
+
+            card.addView(label("0", 20f, color, true))
+            card.addView(label(title, 10f, gray))
+
+            return card
+        }
+
+        val statusParams = LinearLayout.LayoutParams(
+            0, dp(86), 1f
+        ).apply {
+            setMargins(dp(3), 0, dp(3), 0)
+        }
+
+        statusRow.addView(statusCard("Online", green), statusParams)
+        statusRow.addView(statusCard("Em curso", blue), statusParams)
+        statusRow.addView(statusCard("Em espera", yellow), statusParams)
+        statusRow.addView(statusCard("Bloqueados", red), statusParams)
+
+        content.addView(statusRow)
+
 
     } else {
 
