@@ -7,409 +7,397 @@ import android.graphics.Color
 import android.graphics.Typeface
 import android.view.Gravity
 import android.view.View
-import android.widget.LinearLayout
-import android.widget.ScrollView
-import android.widget.TextView
+import android.widget.*
 
 class MainActivity : Activity() {
 
-    private val fundo = Color.rgb(5, 8, 14)
-    private val cartao = Color.rgb(14, 19, 28)
-    private val branco = Color.WHITE
-    private val cinza = Color.rgb(155, 165, 180)
-    private val vermelho = Color.rgb(230, 15, 40)
-    private val verde = Color.rgb(25, 210, 125)
-    private val azul = Color.rgb(40, 135, 255)
-    private val amarelo = Color.rgb(245, 180, 45)
+    private val bg = Color.rgb(5, 8, 14)
+    private val card = Color.rgb(14, 19, 28)
+    private val white = Color.WHITE
+    private val gray = Color.rgb(155, 165, 180)
+    private val red = Color.rgb(230, 10, 35)
+    private val green = Color.rgb(40, 200, 125)
+    private val blue = Color.rgb(45, 135, 255)
+    private val yellow = Color.rgb(240, 180, 50)
 
-    private lateinit var conteudo: LinearLayout
-    private lateinit var barra: LinearLayout
+    private lateinit var content: LinearLayout
+    private lateinit var navigation: LinearLayout
+    private var paused = true
+
+    private fun dp(v: Int): Int =
+        (v * resources.displayMetrics.density).toInt()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        window.statusBarColor = fundo
-        window.navigationBarColor = fundo
+        window.statusBarColor = Color.BLACK
+        window.navigationBarColor = Color.BLACK
 
-        val principal = LinearLayout(this).apply {
+        val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(fundo)
+            setBackgroundColor(bg)
         }
 
         val scroll = ScrollView(this).apply {
-            isFillViewport = true
+            clipToPadding = false
         }
 
-        conteudo = LinearLayout(this).apply {
+        content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(14, 12, 14, 20)
+            setPadding(dp(14), dp(10), dp(14), dp(20))
         }
 
-        scroll.addView(conteudo)
+        scroll.addView(content)
 
-        principal.addView(
-            scroll,
-            LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                0,
-                1f
-            )
-        )
+        root.addView(scroll, LinearLayout.LayoutParams(
+            -1, 0, 1f
+        ))
 
-        barra = LinearLayout(this).apply {
+        navigation = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            setBackgroundColor(Color.rgb(12, 16, 24))
-            setPadding(3, 7, 3, 7)
+            gravity = Gravity.CENTER
+            setBackgroundColor(Color.rgb(10, 14, 22))
+            setPadding(dp(5), dp(7), dp(5), dp(7))
         }
 
-        principal.addView(barra)
+        root.addView(navigation, LinearLayout.LayoutParams(
+            -1, dp(65)
+        ))
 
-        setContentView(principal)
+        setContentView(root)
 
-        mostrarInicio()
-        atualizarBarra("Início")
+        showHome()
+        updateNavigation("Início")
     }
 
-    private fun texto(
-        valor: String,
-        tamanho: Float = 14f,
-        cor: Int = branco,
-        negrito: Boolean = false
+    private fun label(
+        value: String,
+        size: Float = 14f,
+        color: Int = white,
+        bold: Boolean = false
     ): TextView {
         return TextView(this).apply {
-            text = valor
-            textSize = tamanho
-            setTextColor(cor)
-            if (negrito) setTypeface(null, Typeface.BOLD)
+            text = value
+            textSize = size
+            setTextColor(color)
+            if (bold) setTypeface(null, Typeface.BOLD)
         }
     }
 
-    private fun espaco(altura: Int) {
-        conteudo.addView(View(this), LinearLayout.LayoutParams(1, altura))
+    private fun space(height: Int) {
+        content.addView(View(this), LinearLayout.LayoutParams(
+            1, dp(height)
+        ))
     }
 
-    private fun titulo(valor: String) {
-        val t = texto(valor, 13f, cinza, true)
-        t.setPadding(2, 16, 2, 9)
-        conteudo.addView(t)
+    private fun section(value: String) {
+        val t = label(value, 12f, gray, true)
+        t.setPadding(dp(3), dp(15), dp(3), dp(8))
+        content.addView(t)
     }
 
-    private fun cartaoView(
+    private fun panel(
         padding: Int = 14,
-        cor: Int = cartao
+        color: Int = card
     ): LinearLayout {
         return LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(padding, padding, padding, padding)
-            setBackgroundColor(cor)
+            setPadding(dp(padding), dp(padding), dp(padding), dp(padding))
+            setBackgroundColor(color)
         }
     }
 
-    private fun adicionarCartao(view: View, margem: Int = 9) {
-        conteudo.addView(
-            view,
-            LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply {
-                bottomMargin = margem
-            }
-        )
+    private fun addPanel(view: View, bottom: Int = 9) {
+        content.addView(view, LinearLayout.LayoutParams(
+            -1, -2
+        ).apply {
+            bottomMargin = dp(bottom)
+        })
     }
 
-    private fun linha(vararg views: View): LinearLayout {
+    private fun horizontal(vararg views: View): LinearLayout {
         return LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             views.forEach {
-                addView(
-                    it,
-                    LinearLayout.LayoutParams(
-                        0,
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                        1f
-                    ).apply {
-                        marginEnd = 5
-                        marginStart = 5
-                    }
-                )
+                addView(it, LinearLayout.LayoutParams(
+                    0, -2, 1f
+                ).apply {
+                    marginEnd = dp(5)
+                    marginStart = dp(5)
+                })
             }
         }
     }
 
-    private fun mostrarInicio() {
-        conteudo.removeAllViews()
+    private fun showHome() {
+        content.removeAllViews()
 
         // CABEÇALHO
-        val cabecalho = LinearLayout(this).apply {
+        val header = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(17, 18, 17, 18)
-            setBackgroundColor(vermelho)
+            setPadding(dp(16), dp(16), dp(16), dp(16))
+            setBackgroundColor(red)
         }
 
-        val marca = texto("N", 27f, branco, true)
-        val nome = LinearLayout(this).apply {
+        header.addView(label("⚙", 25f, white, true))
+
+        val brand = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            addView(texto("NGUIRAZE NET", 21f, branco, true))
-            addView(texto("● Conectado • Online", 12f, branco))
+            addView(label("NGUIRAZE NET", 20f, white, true))
+            addView(label("● Sistema em preparação", 11f, white))
         }
 
-        cabecalho.addView(marca)
-        cabecalho.addView(
-            nome,
-            LinearLayout.LayoutParams(0, -2, 1f).apply {
-                leftMargin = 15
-            }
-        )
-        cabecalho.addView(texto("24H", 17f, branco, true))
-        adicionarCartao(cabecalho, 12)
+        header.addView(brand, LinearLayout.LayoutParams(
+            0, -2, 1f
+        ).apply { marginStart = dp(12) })
 
-        // BOT ONLINE
-        val bot = cartaoView()
-        bot.addView(texto("🤖  BOT ONLINE", 18f, verde, true))
-        bot.addView(texto("       Ligado ao sistema", 12f, cinza))
-        adicionarCartao(bot)
+        header.addView(label("24H", 16f, white, true))
+        addPanel(header, 12)
+
+        // CONTROLO DA FILA
+        val pauseCard = panel(12, Color.rgb(45, 10, 19))
+        pauseCard.addView(label(
+            if (paused) "FILA PAUSADA" else "FILA PREPARADA",
+            13f, red, true
+        ))
+        pauseCard.addView(label(
+            if (paused) "Pausada manualmente." else "Aguardando configuração.",
+            11f, white
+        ))
+
+        val pauseButton = Button(this).apply {
+            text = if (paused) "RETOMAR FILA" else "PAUSAR FILA"
+            setTextColor(white)
+            setBackgroundColor(red)
+            setOnClickListener {
+                paused = !paused
+                showHome()
+                updateNavigation("Início")
+            }
+        }
+
+        pauseCard.addView(pauseButton, LinearLayout.LayoutParams(
+            -1, dp(46)
+        ).apply { topMargin = dp(8) })
+
+        addPanel(pauseCard, 9)
+
+        // BOT
+        val bot = panel()
+        bot.addView(label("🤖  BOT", 17f, green, true))
+        bot.addView(label("Aguardando configuração", 12f, gray))
+        addPanel(bot)
 
         // AUTOMAÇÃO
-        val automacao = cartaoView()
-        automacao.addView(
-            texto("⚙  Serviço de automação: ATIVO", 15f, branco, true)
-        )
-        automacao.addView(
-            texto("    Transferências automáticas de megas", 12f, cinza)
-        )
-        adicionarCartao(automacao)
+        val automation = panel()
+        automation.addView(label(
+            "⚙  Serviço de automação", 15f, white, true
+        ))
+        automation.addView(label(
+            "Acessibilidade ainda não configurada",
+            12f, gray
+        ))
+        addPanel(automation)
 
         // ATALHOS
-        titulo("ACESSO RÁPIDO")
+        section("ATALHOS")
 
-        adicionarAtalhos(
+        shortcutRow(
             listOf(
-                "▥\nResumo" to verde,
-                "📡\nSIMs" to vermelho,
-                "◉\nCredencial" to azul,
-                "ⓢ\nCrédito" to amarelo
+                "▥\nResumo" to green,
+                "♙\nSIMs" to red,
+                "◉\nCredencial" to blue,
+                "ⓢ\nCrédito" to yellow
             )
         )
 
-        adicionarAtalhos(
+        shortcutRow(
             listOf(
-                "⚙\nAvançado" to amarelo,
-                "➤\nSMS" to verde,
-                "⌛\nAgendar" to amarelo
+                "⚙\nAvançado" to yellow,
+                "➤\nSMS" to green,
+                "⌛\nAgendar" to yellow
             )
         )
 
-        // VELOCIDADE USSD
-        val ussd = cartaoView()
-        ussd.addView(texto("▶  Velocidade do USSD", 15f, branco, true))
-        ussd.addView(texto("     Modo: Automático • Toque para ajustar", 12f, cinza))
-        adicionarCartao(ussd, 5)
+        // USSD
+        val ussd = panel()
+        ussd.addView(label("▶  Velocidade do USSD", 14f, white, true))
+        ussd.addView(label("Modo: Automático • Por configurar", 11f, gray))
+        addPanel(ussd)
 
         // ESTATÍSTICAS
-        titulo("RESUMO DAS TRANSFERÊNCIAS")
+        section("RESUMO DAS TRANSFERÊNCIAS")
 
-        val estatisticas = linha(
-            criarEstatistica("☰", "Na fila", "0", vermelho),
-            criarEstatistica("✓", "Concluídas", "0", verde)
-        )
-        adicionarCartao(estatisticas)
+        addPanel(horizontal(
+            statistic("☰", "Na fila", "0", red),
+            statistic("✓", "Concluídas", "0", green)
+        ))
 
         // META
-        titulo("META DIÁRIA")
+        section("META DIÁRIA")
 
-        val meta = cartaoView()
-        meta.addView(texto("🎯  Meta de hoje", 15f, branco, true))
-        meta.addView(texto("0 MT   •   0% concluído", 13f, cinza))
-        meta.addView(texto("Meta ainda não configurada", 11f, cinza))
-        adicionarCartao(meta)
+        val goal = panel()
+        goal.addView(label("🎯  Meta de hoje", 14f, white, true))
+        goal.addView(label("0 MT • 0% concluído", 12f, gray))
+        goal.addView(label("Meta ainda não configurada", 11f, gray))
+        addPanel(goal)
 
         // ÚLTIMA VENDA
-        titulo("ÚLTIMA VENDA")
+        section("ÚLTIMA VENDA")
 
-        val venda = cartaoView()
-        venda.addView(texto("Nenhuma venda registada", 14f, cinza))
-        adicionarCartao(venda)
+        val sale = panel()
+        sale.addView(label("Nenhuma venda registada", 13f, gray))
+        addPanel(sale)
 
         // VENDAS POR HORA
-        titulo("VENDAS POR HORA (HOJE)")
+        section("VENDAS POR HORA (HOJE)")
 
-        val vendas = cartaoView()
-        vendas.addView(texto("Ainda não existem vendas hoje", 13f, cinza))
-        vendas.addView(texto("0 vendas  •  Faturação: 0 MT", 12f, verde))
-        adicionarCartao(vendas)
+        val chart = panel()
+        chart.addView(label(
+            "Ainda não existem vendas registadas.",
+            12f, gray
+        ))
+        chart.addView(label(
+            "0 vendas • Faturação: 0 MT",
+            12f, green
+        ))
+        addPanel(chart)
 
-        // CARTÕES SIM
-        val tituloSim = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            addView(
-                texto("CARTÕES SIM", 13f, cinza, true),
-                LinearLayout.LayoutParams(0, -2, 1f)
-            )
-            addView(texto("Gerir →", 12f, verde, true))
-        }
-        conteudo.addView(tituloSim)
-        espaco(8)
+        // SIM
+        section("CARTÕES SIM")
 
-        val sims = linha(
-            criarSim("SIM 1"),
-            criarSim("SIM 2")
-        )
-        adicionarCartao(sims)
+        addPanel(horizontal(
+            simCard("SIM 1"),
+            simCard("SIM 2")
+        ))
 
         // FILA DE ESPERA
-        titulo("FILA DE ESPERA")
+        section("FILA DE ESPERA")
 
-        val fila = cartaoView()
-        fila.addView(texto("◉  Sem pedidos na fila", 13f, cinza))
-        adicionarCartao(fila)
+        val queue = panel()
+        queue.addView(label("◉  Sem pedidos na fila", 13f, gray))
+        addPanel(queue)
 
         // EQUIPA
-        titulo("EQUIPA")
+        section("EQUIPA")
 
-        val equipa = cartaoView()
-        equipa.addView(texto("Área de equipa", 14f, cinza))
-        adicionarCartao(equipa)
+        val team = panel()
+        team.addView(label("Área de equipa", 13f, gray))
+        addPanel(team)
     }
 
-    private fun adicionarAtalhos(
-        itens: List<Pair<String, Int>>
-    ) {
-        val linha = LinearLayout(this).apply {
+    private fun shortcutRow(items: List<Pair<String, Int>>) {
+        val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
         }
 
-        itens.forEach { item ->
-            val botao = TextView(this).apply {
+        items.forEach { item ->
+            val tile = TextView(this).apply {
                 text = item.first
-                textSize = 14f
+                textSize = 12f
                 gravity = Gravity.CENTER
                 setTextColor(item.second)
                 setTypeface(null, Typeface.BOLD)
-                setPadding(3, 13, 3, 13)
-                setBackgroundColor(cartao)
+                setPadding(dp(2), dp(10), dp(2), dp(10))
+                setBackgroundColor(card)
             }
 
-            linha.addView(
-                botao,
-                LinearLayout.LayoutParams(
-                    0,
-                    78,
-                    1f
-                ).apply {
-                    marginEnd = 4
-                    marginStart = 4
-                    bottomMargin = 8
-                }
-            )
+            row.addView(tile, LinearLayout.LayoutParams(
+                0, dp(65), 1f
+            ).apply {
+                marginStart = dp(3)
+                marginEnd = dp(3)
+                bottomMargin = dp(7)
+            })
         }
 
-        conteudo.addView(linha)
+        content.addView(row)
     }
 
-    private fun criarEstatistica(
-        simbolo: String,
-        nome: String,
-        numero: String,
-        cor: Int
+    private fun statistic(
+        icon: String,
+        name: String,
+        number: String,
+        color: Int
     ): LinearLayout {
-        val caixa = cartaoView()
-        caixa.addView(texto(simbolo + "  " + nome, 13f, cor, true))
-        caixa.addView(texto(numero, 27f, branco, true))
-        return caixa
+        val box = panel()
+        box.addView(label("$icon  $name", 12f, color, true))
+        box.addView(label(number, 25f, white, true))
+        return box
     }
 
-    private fun criarSim(nome: String): LinearLayout {
-        val caixa = cartaoView(12)
-        caixa.addView(texto(nome, 14f, verde, true))
-        caixa.addView(texto("0 / 10", 24f, branco, true))
-        caixa.addView(texto("Transferências", 11f, cinza))
-        caixa.addView(texto("Limite diário: 10", 11f, cinza))
-        return caixa
+    private fun simCard(name: String): LinearLayout {
+        val box = panel(11)
+        box.addView(label(name, 13f, green, true))
+        box.addView(label("0 / 10", 23f, white, true))
+        box.addView(label("Transferências", 10f, gray))
+        box.addView(label("Limite diário: 10", 10f, gray))
+        return box
     }
 
-    private fun mostrarPagina(nome: String) {
-        conteudo.removeAllViews()
+    private fun showPage(name: String) {
+        content.removeAllViews()
+        space(25)
+        content.addView(label("NGUIRAZE NET", 21f, red, true))
+        space(20)
+        content.addView(label(name, 25f, white, true))
+        space(12)
 
-        espaco(20)
-        conteudo.addView(texto("NGUIRAZE NET", 22f, vermelho, true))
-        espaco(20)
-        conteudo.addView(texto(nome, 25f, branco, true))
-        espaco(12)
-
-        val caixa = cartaoView(20)
-        caixa.addView(texto("Secção $nome", 17f, branco, true))
-        caixa.addView(
-            texto(
-                "Esta área será implementada na próxima etapa.",
-                14f,
-                cinza
-            )
-        )
-        adicionarCartao(caixa)
+        val box = panel(20)
+        box.addView(label("Área de $name", 16f, white, true))
+        box.addView(label(
+            "Esta secção será desenvolvida e configurada.",
+            13f, gray
+        ))
+        addPanel(box)
     }
 
-    private fun atualizarBarra(selecionado: String) {
-        barra.removeAllViews()
+    private fun updateNavigation(selected: String) {
+        navigation.removeAllViews()
 
-        val nomes = listOf(
-            "Início",
-            "Fila",
-            "Conclusão",
-            "Pagamentos",
-            "Configuração"
+        val names = listOf(
+            "Início", "Fila", "Conclusão",
+            "Pagamentos", "Config"
         )
 
-        val icones = listOf("⌂", "☷", "✓", "ⓢ", "⚙")
+        val icons = listOf("⌂", "☷", "✓", "ⓢ", "⚙")
 
-        nomes.forEachIndexed { indice, nome ->
-            val ativo = nome == selecionado
+        names.forEachIndexed { index, name ->
+            val active = name == selected
 
             val item = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
-                setPadding(2, 8, 2, 8)
+                setPadding(dp(2), dp(5), dp(2), dp(5))
                 setBackgroundColor(
-                    if (ativo) vermelho else Color.TRANSPARENT
+                    if (active) red else Color.TRANSPARENT
                 )
 
-                addView(
-                    texto(
-                        icones[indice],
-                        21f,
-                        if (ativo) branco else cinza,
-                        true
-                    ).apply { gravity = Gravity.CENTER }
-                )
+                addView(label(
+                    icons[index], 20f,
+                    if (active) white else gray, true
+                ).apply { gravity = Gravity.CENTER })
 
-                addView(
-                    texto(
-                        nome,
-                        9f,
-                        if (ativo) branco else cinza,
-                        ativo
-                    ).apply { gravity = Gravity.CENTER }
-                )
+                addView(label(
+                    name, 9f,
+                    if (active) white else gray, active
+                ).apply { gravity = Gravity.CENTER })
 
                 setOnClickListener {
-                    if (nome == "Início") {
-                        mostrarInicio()
-                    } else {
-                        mostrarPagina(nome)
-                    }
-                    atualizarBarra(nome)
+                    if (name == "Início") showHome()
+                    else showPage(name)
+                    updateNavigation(name)
                 }
             }
 
-            barra.addView(
-                item,
-                LinearLayout.LayoutParams(
-                    0,
-                    62,
-                    1f
-                )
-            )
+            navigation.addView(item, LinearLayout.LayoutParams(
+                0, -1, 1f
+            ).apply {
+                marginStart = dp(2)
+                marginEnd = dp(2)
+            })
         }
     }
 }
