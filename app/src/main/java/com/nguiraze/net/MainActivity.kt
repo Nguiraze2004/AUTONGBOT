@@ -61,10 +61,29 @@ class MainActivity : Activity() {
         }
 
         root.addView(navigation, LinearLayout.LayoutParams(
-            -1, dp(65)
-        ))
+    -1, dp(65)
+))
 
-        setContentView(root)
+root.setOnApplyWindowInsetsListener { _, insets ->
+
+    val bottomInset = insets.systemWindowInsetBottom
+
+    navigation.setPadding(
+        dp(5),
+        dp(7),
+        dp(5),
+        dp(7) + bottomInset
+    )
+
+    val params = navigation.layoutParams
+    params.height = dp(65) + bottomInset
+    navigation.layoutParams = params
+
+    insets
+}
+
+setContentView(root)
+root.requestApplyInsets()
 
         showHome()
         updateNavigation("Início")
