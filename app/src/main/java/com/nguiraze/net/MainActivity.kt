@@ -314,36 +314,37 @@ root.requestApplyInsets()
     }
 
     private fun shortcutRow(items: List<Pair<String, Int>>) {
-        val row = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-        }
-
-        items.forEach { item ->
-            val tile = TextView(this).apply {
-                text = item.first
-                textSize = 12f
-                gravity = Gravity.CENTER
-                setTextColor(item.second)
-                setTypeface(null, Typeface.BOLD)
-                setPadding(dp(2), dp(10), dp(2), dp(10))
-                background = android.graphics.drawable.GradientDrawable().apply {
-    setColor(card)
-    cornerRadius = dp(16).toFloat()
-    setStroke(dp(1), Color.rgb(32, 40, 52))
-                }
-            }
-
-            row.addView(tile, LinearLayout.LayoutParams(
-                0, dp(65), 1f
-            ).apply {
-                marginStart = dp(3)
-                marginEnd = dp(3)
-                bottomMargin = dp(7)
-            })
-        }
-
-        content.addView(row)
+    val row = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
     }
+
+    items.forEach { item ->
+        val tile = TextView(this).apply {
+            text = item.first
+            textSize = 12f
+            gravity = Gravity.CENTER
+            setTextColor(item.second)
+            setTypeface(null, Typeface.BOLD)
+            setPadding(dp(2), dp(10), dp(2), dp(10))
+
+            background = android.graphics.drawable.GradientDrawable().apply {
+                setColor(card)
+                cornerRadius = dp(16).toFloat()
+                setStroke(dp(1), Color.rgb(32, 40, 52))
+            }
+        }
+
+        row.addView(tile, LinearLayout.LayoutParams(
+            0, dp(65), 1f
+        ).apply {
+            marginStart = dp(3)
+            marginEnd = dp(3)
+            bottomMargin = dp(7)
+        })
+    }
+
+    content.addView(row)
+ }
 
     private fun statistic(
         icon: String,
