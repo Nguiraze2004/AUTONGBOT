@@ -403,7 +403,7 @@ private fun showPage(name: String) {
             setHintTextColor(gray)
             setTextColor(white)
             textSize = 14f
-            singleLine = true
+            maxLines = 1
             setPadding(dp(12), dp(12), dp(12), dp(12))
             background = android.graphics.drawable.GradientDrawable().apply {
                 setColor(Color.rgb(20, 27, 38))
