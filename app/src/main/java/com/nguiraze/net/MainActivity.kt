@@ -124,7 +124,11 @@ root.requestApplyInsets()
         return LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(padding), dp(padding), dp(padding), dp(padding))
-            setBackgroundColor(color)
+            background = android.graphics.drawable.GradientDrawable().apply {
+    setColor(color)
+    cornerRadius = dp(18).toFloat()
+    setStroke(dp(1), Color.rgb(32, 40, 52))
+            }
         }
     }
 
