@@ -685,45 +685,111 @@ manualBox.addView(
         addPanel(manualBox)
                 space(20)
 
-        content.addView(
-            label("➤  EXECUTORES", 14f, white, true)
-        )
+        
+content.addView(
+    label("➤  EXECUTORES", 14f, white, true)
+)
 
-        space(10)
+space(10)
 
-        val executorsRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
+val executorsContainer = LinearLayout(this).apply {
+    orientation = LinearLayout.VERTICAL
+}
+
+executores.forEach { executor ->
+
+    val executorBox = panel(18)
+
+    val estadoCor = when (executor.estado) {
+        "LIVRE" -> green
+        "OCUPADO" -> yellow
+        else -> gray
+    }
+
+    val header = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+    }
+
+    header.addView(
+        label(executor.nome, 16f, white, true),
+        LinearLayout.LayoutParams(0, -2, 1f)
+    )
+
+    header.addView(
+        label("● ${executor.estado}", 11f, estadoCor, true)
+    )
+
+    executorBox.addView(header)
+
+    val statsRow1 = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+    }
+
+    fun addStat(
+        linha: LinearLayout,
+        valor: String,
+        descricao: String
+    ) {
+        val item = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
         }
 
-        val executor1 = panel(14)
-        executor1.addView(
-            label("EXECUTOR 1", 14f, white, true)
-        )
-        executor1.addView(
-            label("Aguardando ligação", 11f, gray)
-        )
+        item.addView(label(valor, 22f, white, true))
+        item.addView(label(descricao, 10f, gray))
 
-        val executor2 = panel(14)
-        executor2.addView(
-            label("EXECUTOR 2", 14f, white, true)
+        linha.addView(
+            item,
+            LinearLayout.LayoutParams(0, -2, 1f)
         )
-        executor2.addView(
-            label("Aguardando ligação", 11f, gray)
-        )
+    }
 
-        executorsRow.addView(
-            executor1,
-            LinearLayout.LayoutParams(0, dp(100), 1f).apply {
-                setMargins(0, 0, dp(5), 0)
-            }
-        )
+    space(18)
 
-        executorsRow.addView(
-            executor2,
-            LinearLayout.LayoutParams(0, dp(100), 1f).apply {
-                setMargins(dp(5), 0, 0, 0)
-            }
-        )
+    addStat(
+        statsRow1,
+        executor.vendasConcluidas.toString(),
+        "Vendas concluídas"
+    )
+
+    addStat(
+        statsRow1,
+        "${executor.totalMBEnviados} MB",
+        "Total de MB enviados"
+    )
+
+    executorBox.addView(statsRow1)
+
+    space(18)
+
+    val statsRow2 = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+    }
+
+    addStat(
+        statsRow2,
+        executor.enviosEmCurso.toString(),
+        "Envios em curso"
+    )
+
+    addStat(
+        statsRow2,
+        executor.falhas.toString(),
+        "Falhas"
+    )
+
+    executorBox.addView(statsRow2)
+
+    executorsContainer.addView(
+        executorBox,
+        LinearLayout.LayoutParams(-1, -2).apply {
+            bottomMargin = dp(12)
+        }
+    )
+}
+
+content.addView(executorsContainer)
+
 
         content.addView(executorsRow)
                 // EM CURSO AGORA
