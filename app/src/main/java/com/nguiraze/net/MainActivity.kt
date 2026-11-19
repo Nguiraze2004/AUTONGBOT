@@ -364,7 +364,8 @@ root.requestApplyInsets()
         addPanel(team)
     }
 
-    private fun shortcutRow(items: List<Pair<String, Int>>) {
+    
+private fun shortcutRow(items: List<Pair<String, Int>>) {
     val row = LinearLayout(this).apply {
         orientation = LinearLayout.HORIZONTAL
     }
@@ -383,6 +384,12 @@ root.requestApplyInsets()
                 cornerRadius = dp(16).toFloat()
                 setStroke(dp(1), Color.rgb(32, 40, 52))
             }
+
+            setOnClickListener {
+                if (item.first.contains("Resumo")) {
+                    showPage("Resumo")
+                }
+            }
         }
 
         row.addView(tile, LinearLayout.LayoutParams(
@@ -395,6 +402,8 @@ root.requestApplyInsets()
     }
 
     content.addView(row)
+}
+
  }
 
     private fun statistic(
