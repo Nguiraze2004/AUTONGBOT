@@ -656,14 +656,17 @@ private fun showPage(name: String) {
 
         space(10)
 
-        val inProgressBox = panel(14)
+                val inProgressBox = panel(14)
 
         inProgressBox.addView(
-            label("Nenhum envio em andamento", 15f, white, true)
+            label("●  NENHUM ENVIO EM CURSO", 13f, gray, true)
         )
 
         inProgressBox.addView(
-            label("Aguarde, por favor...", 12f, gray)
+            label(
+                "Os envios ativos aparecerão aqui.",
+                12f, gray
+            )
         )
 
         addPanel(inProgressBox)
