@@ -738,10 +738,13 @@ private fun showPage(name: String) {
 
         addPanel(historyBox)
 
+    
     } else if (name == "Conclusão") {
 
         space(25)
-        content.addView(label("NGUIRAZE NET", 21f, red, true))
+        content.addView(
+            label("NGUIRAZE NET", 21f, red, true)
+        )
         space(18)
 
         content.addView(
@@ -749,22 +752,108 @@ private fun showPage(name: String) {
         )
         space(15)
 
-        val conclusionBox = panel(18)
+        // INDICADORES DE ESTADO
+        val statusRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+        }
 
-        conclusionBox.addView(
-            label("ENVIOS CONCLUÍDOS", 15f, white, true)
-        )
-        space(12)
-
-        conclusionBox.addView(
-            label("0", 32f, green, true)
-        )
-
-        conclusionBox.addView(
-            label("Nenhum envio concluído ainda.", 13f, gray)
+        val statusNames = listOf(
+            "TODOS",
+            "CONCLUÍDOS",
+            "ERROS",
+            "INCERTO",
+            "EM FILA"
         )
 
-        addPanel(conclusionBox)
+        val statusColors = listOf(
+            white, green, red, yellow, blue
+        )
+
+        statusNames.forEachIndexed { index, statusName ->
+
+            val statusBox = panel(8)
+
+            statusBox.addView(
+                label(
+                    statusName,
+                    9f,
+                    statusColors[index],
+                    true
+                )
+            )
+
+            statusBox.addView(
+                label("0", 22f, white, true)
+            )
+
+            statusRow.addView(
+                statusBox,
+                LinearLayout.LayoutParams(
+                    0,
+                    dp(76),
+                    1f
+                ).apply {
+                    setMargins(dp(2), 0, dp(2), 0)
+                }
+            )
+        }
+
+        content.addView(statusRow)
+
+        space(22)
+
+        // LISTA DE TRANSFERÊNCIAS
+        content.addView(
+            label("➤  TRANSFERÊNCIAS", 15f, white, true)
+        )
+
+        space(10)
+
+        val transfersBox = panel(16)
+
+        transfersBox.addView(
+            label(
+                "HISTÓRICO DE TRANSFERÊNCIAS",
+                13f,
+                white,
+                true
+            )
+        )
+
+        transfersBox.addView(
+            label(
+                "Número do cliente  •  Quantidade de MB",
+                11f,
+                gray
+            )
+        )
+
+        transfersBox.addView(
+            label(
+                "Executor  •  Data e hora  •  Estado",
+                11f,
+                gray
+            )
+        )
+
+        transfersBox.addView(
+            label(
+                "NENHUMA TRANSFERÊNCIA",
+                13f,
+                gray,
+                true
+            )
+        )
+
+        transfersBox.addView(
+            label(
+                "As transferências realizadas aparecerão aqui.",
+                12f,
+                gray
+            )
+        )
+
+        addPanel(transfersBox)
 
     } else {
 
