@@ -25,6 +25,10 @@ data class Pedido(
     val estado: String
 )
 
+data class Executor(
+    val nome: String,
+    var estado: String
+)
 class MainActivity : Activity() {
 
     private val bg = Color.rgb(5, 8, 14)
@@ -42,6 +46,10 @@ class MainActivity : Activity() {
 
     private val transferencias = mutableListOf<Transferencia>()
     private val pedidosFila = mutableListOf<Pedido>()
+    private val executores = mutableListOf(
+    Executor("EXECUTOR 1", "OFFLINE"),
+    Executor("EXECUTOR 2", "OFFLINE")
+)
 
     private fun registarTransferencia(
         numero: String,
