@@ -1216,30 +1216,116 @@ if (pedidosFila.isEmpty()) {
 
     atualizarHistorico()
 
-} else {
-        
 
-        space(25)
-        content.addView(label("NGUIRAZE NET", 21f, red, true))
-        space(20)
-        content.addView(label(name, 25f, white, true))
-        space(12)
+} else if (name == "SIMs") {
 
-        val box = panel(20)
+    space(25)
+    content.addView(label("NGUIRAZE NET", 21f, red, true))
+    space(18)
+
+    content.addView(label("GESTÃO DE SIMs", 23f, white, true))
+    space(8)
+
+    content.addView(
+        label("Controlo de envios por cartão SIM", 12f, gray)
+    )
+    space(18)
+
+    fun simCard(numero: String, usados: Int, ativo: Boolean) {
+        val box = panel(18)
 
         box.addView(
-            label("Área de $name", 16f, white, true)
+            label(numero, 18f, white, true)
         )
+
+        space(8)
 
         box.addView(
             label(
-                "Esta secção será desenvolvida e configurada.",
-                13f, gray
+                "$usados / 10 ENVIO(S)",
+                22f,
+                if (usados >= 10) red else green,
+                true
             )
         )
 
+        val estado = when {
+            usados >= 10 -> "LIMITE ATINGIDO"
+            ativo -> "SIM SELECIONADO"
+            else -> "DISPONÍVEL"
+        }
+
+        box.addView(
+            label(
+                estado,
+                12f,
+                if (usados >= 10) red else if (ativo) green else gray,
+                true
+            )
+        )
+
+        space(12)
+
+        val usarButton = Button(this).apply {
+            text = if (ativo) "SIM SELECIONADO" else "USAR ESTE SIM"
+            isAllCaps = false
+            setTextColor(white)
+            isEnabled = usados < 10 && !ativo
+
+            background = android.graphics.drawable.GradientDrawable().apply {
+                setColor(Color.rgb(15, 22, 32))
+                cornerRadius = dp(14).toFloat()
+                setStroke(dp(1), if (ativo) green else red)
+            }
+        }
+
+        box.addView(
+            usarButton,
+            LinearLayout.LayoutParams(-1, dp(48))
+        )
+
         addPanel(box)
+        space(14)
     }
+
+    simCard("SIM 1", 0, true)
+    simCard("SIM 2", 0, false)
+
+    val infoBox = panel(16)
+    infoBox.addView(
+        label("INFORMAÇÃO", 14f, yellow, true)
+    )
+    infoBox.addView(
+        label(
+            "O contador será atualizado apenas após confirmação de sucesso da operadora. A gestão automática será ligada posteriormente.",
+            12f, gray
+        )
+    )
+    addPanel(infoBox)
+
+} else {
+
+    space(25)
+    content.addView(label("NGUIRAZE NET", 21f, red, true))
+    space(20)
+    content.addView(label(name, 25f, white, true))
+    space(12)
+
+    val box = panel(20)
+
+    box.addView(
+        label("Área de $name", 16f, white, true)
+    )
+
+    box.addView(
+        label(
+            "Esta secção será desenvolvida e configurada.",
+            13f, gray
+        )
+    )
+
+    addPanel(box)
+}
 }
 
 
