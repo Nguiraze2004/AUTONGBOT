@@ -604,41 +604,69 @@ private fun showPage(name: String) {
         innerSpace(14)
 
         // BOTAO DESPACHAR
-        val dispatchButton = android.widget.Button(this).apply {
-            text = "➤  Despachar para um Agente"
-            textSize = 13f
-            isAllCaps = false
-            setTextColor(white)
-            background = android.graphics.drawable.GradientDrawable().apply {
-                setColor(Color.rgb(15, 22, 32))
-                cornerRadius = dp(18).toFloat()
-                setStroke(dp(1), Color.rgb(40, 50, 65))
-            }
+        
+val dispatchButton = android.widget.Button(this).apply {
+    text = "➤  Despachar para um Agente"
+    textSize = 13f
+    isAllCaps = false
+    setTextColor(white)
+    background = android.graphics.drawable.GradientDrawable().apply {
+        setColor(Color.rgb(15, 22, 32))
+        cornerRadius = dp(18).toFloat()
+        setStroke(dp(1), Color.rgb(40, 50, 65))
+    }
 
-            setOnClickListener {
-                val numero = numberInput.text.toString().trim()
-                val megas = mbInput.text.toString().trim()
+    setOnClickListener {
+        val numero = numberInput.text.toString().trim()
+        val megas = mbInput.text.toString().trim()
+        val quantidade = megas.toIntOrNull()
 
-                if (numero.isEmpty() || megas.isEmpty()) {
-                    android.widget.Toast.makeText(
-                        this@MainActivity,
-                        "Preencha o número e os megabytes.",
-                        android.widget.Toast.LENGTH_SHORT
-                    ).show()
-                } else {
-                    android.widget.Toast.makeText(
-                        this@MainActivity,
-                        "Campos preenchidos. O envio será ligado ao Executor na próxima etapa.",
-                        android.widget.Toast.LENGTH_LONG
-                    ).show()
-                }
-            }
+        if (numero.isEmpty() || megas.isEmpty()) {
+            android.widget.Toast.makeText(
+                this@MainActivity,
+                "Preencha o número e os megabytes.",
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
+
+        } else if (quantidade == null || quantidade !in 100..10240) {
+            android.widget.Toast.makeText(
+                this@MainActivity,
+                "A quantidade deve estar entre 100 MB e 10 GB.",
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
+
+        } else {
+            val dataHora = android.text.format.DateFormat.format(
+                "dd/MM/yyyy HH:mm",
+                java.util.Date()
+            ).toString()
+
+            pedidosFila.add(
+                Pedido(
+                    numeroCliente = numero,
+                    quantidadeMB = quantidade,
+                    executor = "Por atribuir",
+                    dataHora = dataHora,
+                    estado = "Em fila"
+                )
+            )
+
+            android.widget.Toast.makeText(
+                this@MainActivity,
+                "Pedido adicionado à fila de espera!",
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
+
+            showPage("Fila")
         }
+    }
+}
 
-        manualBox.addView(
-            dispatchButton,
-            LinearLayout.LayoutParams(-1, dp(50))
-        )
+manualBox.addView(
+    dispatchButton,
+    LinearLayout.LayoutParams(-1, dp(50))
+)
+
 
         addPanel(manualBox)
                 space(20)
