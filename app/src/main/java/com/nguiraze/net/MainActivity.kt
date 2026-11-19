@@ -794,11 +794,10 @@ if (pedidosFila.isEmpty()) {
     }
 }
 
-addPanel(waitingBox)
-
-
+  
         addPanel(waitingBox)
-                // HISTÓRICO RECENTE
+        
+       // HISTÓRICO RECENTE
         space(20)
 
         content.addView(
