@@ -197,6 +197,37 @@ root.requestApplyInsets()
         }
     }
 
+override fun onRequestPermissionsResult(
+    requestCode: Int,
+    permissions: Array<out String>,
+    grantResults: IntArray
+) {
+    super.onRequestPermissionsResult(
+        requestCode,
+        permissions,
+        grantResults
+    )
+
+    if (requestCode == 101) {
+        if (
+            grantResults.isNotEmpty() &&
+            grantResults[0] == PackageManager.PERMISSION_GRANTED
+        ) {
+            Toast.makeText(
+                this,
+                consultarCartoesSIM(),
+                Toast.LENGTH_LONG
+            ).show()
+        } else {
+            Toast.makeText(
+                this,
+                "Permissão para consultar os SIMs não concedida.",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+}
+
     private fun label(
         value: String,
         size: Float = 14f,
