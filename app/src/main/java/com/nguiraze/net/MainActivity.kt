@@ -715,6 +715,7 @@ private fun showPage(name: String) {
             )
         )
 
+        
         val historyButton = android.widget.Button(this).apply {
             text = "Ver Todos"
             textSize = 12f
@@ -737,7 +738,33 @@ private fun showPage(name: String) {
 
         addPanel(historyBox)
 
+    } else if (name == "Conclusão") {
 
+        space(25)
+        content.addView(label("NGUIRAZE NET", 21f, red, true))
+        space(18)
+
+        content.addView(
+            label("CONCLUSÃO", 23f, white, true)
+        )
+        space(15)
+
+        val conclusionBox = panel(18)
+
+        conclusionBox.addView(
+            label("ENVIOS CONCLUÍDOS", 15f, white, true)
+        )
+        space(12)
+
+        conclusionBox.addView(
+            label("0", 32f, green, true)
+        )
+
+        conclusionBox.addView(
+            label("Nenhum envio concluído ainda.", 13f, gray)
+        )
+
+        addPanel(conclusionBox)
 
     } else {
 
@@ -748,60 +775,80 @@ private fun showPage(name: String) {
         space(12)
 
         val box = panel(20)
-        box.addView(label("Área de $name", 16f, white, true))
-        box.addView(label(
-            "Esta secção será desenvolvida e configurada.",
-            13f, gray
-        ))
+
+        box.addView(
+            label("Área de $name", 16f, white, true)
+        )
+
+        box.addView(
+            label(
+                "Esta secção será desenvolvida e configurada.",
+                13f, gray
+            )
+        )
+
         addPanel(box)
     }
 }
 
 
-    private fun updateNavigation(selected: String) {
-        navigation.removeAllViews()
+private fun updateNavigation(selected: String) {
+    navigation.removeAllViews()
 
-        val names = listOf(
-            "Início", "Fila", "Conclusão",
-            "Pagamentos", "Config"
-        )
+    val names = listOf(
+        "Início", "Fila", "Conclusão",
+        "Pagamentos", "Config"
+    )
 
-        val icons = listOf("⌂", "☷", "✓", "ⓢ", "⚙")
+    val icons = listOf("⌂", "☷", "✓", "ⓢ", "⚙")
 
-        names.forEachIndexed { index, name ->
-            val active = name == selected
+    names.forEachIndexed { index, name ->
+        val active = name == selected
 
-            val item = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                gravity = Gravity.CENTER
-                setPadding(dp(2), dp(5), dp(2), dp(5))
-                setBackgroundColor(
-                    if (active) red else Color.TRANSPARENT
-                )
+        val item = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setPadding(dp(2), dp(5), dp(2), dp(5))
 
-                addView(label(
+            setBackgroundColor(
+                if (active) red else Color.TRANSPARENT
+            )
+
+            addView(
+                label(
                     icons[index], 20f,
                     if (active) white else gray, true
-                ).apply { gravity = Gravity.CENTER })
+                ).apply {
+                    gravity = Gravity.CENTER
+                }
+            )
 
-                addView(label(
+            addView(
+                label(
                     name, 9f,
                     if (active) white else gray, active
-                ).apply { gravity = Gravity.CENTER })
-
-                setOnClickListener {
-                    if (name == "Início") showHome()
-                    else showPage(name)
-                    updateNavigation(name)
+                ).apply {
+                    gravity = Gravity.CENTER
                 }
-            }
+            )
 
-            navigation.addView(item, LinearLayout.LayoutParams(
-                0, -1, 1f
-            ).apply {
+            setOnClickListener {
+                if (name == "Início") {
+                    showHome()
+                } else {
+                    showPage(name)
+                }
+
+                updateNavigation(name)
+            }
+        }
+
+        navigation.addView(
+            item,
+            LinearLayout.LayoutParams(0, -1, 1f).apply {
                 marginStart = dp(2)
                 marginEnd = dp(2)
-            })
-        }
+            }
+        )
     }
 }
