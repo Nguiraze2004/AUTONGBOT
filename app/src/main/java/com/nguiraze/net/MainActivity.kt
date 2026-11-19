@@ -404,8 +404,6 @@ private fun shortcutRow(items: List<Pair<String, Int>>) {
     content.addView(row)
 }
 
- }
-
     private fun statistic(
         icon: String,
         name: String,
