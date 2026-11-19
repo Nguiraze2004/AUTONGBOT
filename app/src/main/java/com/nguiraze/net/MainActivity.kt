@@ -32,6 +32,23 @@ class MainActivity : Activity() {
     private var paused = true
     private val transferencias = mutableListOf<Transferencia>()
 
+    private fun registarTransferencia(
+    numero: String,
+    mb: Int,
+    executor: String,
+    dataHora: String,
+    estado: String
+) {
+    transferencias.add(
+        Transferencia(
+            numeroCliente = numero,
+            quantidadeMB = mb,
+            executor = executor,
+            dataHora = dataHora,
+            estado = estado
+        )
+    )
+}
     private fun dp(v: Int): Int =
         (v * resources.displayMetrics.density).toInt()
 
