@@ -791,7 +791,6 @@ executores.forEach { executor ->
 content.addView(executorsContainer)
 
 
-        content.addView(executorsRow)
                 // EM CURSO AGORA
         space(20)
 
