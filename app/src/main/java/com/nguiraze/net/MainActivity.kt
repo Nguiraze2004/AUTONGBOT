@@ -745,7 +745,7 @@ executores.forEach { executor ->
         )
     }
 
-    space(18)
+
 
     addStat(
         statsRow1,
@@ -761,7 +761,7 @@ executores.forEach { executor ->
 
     executorBox.addView(statsRow1)
 
-    space(18)
+
 
     val statsRow2 = LinearLayout(this).apply {
     orientation = LinearLayout.HORIZONTAL
