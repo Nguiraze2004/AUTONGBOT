@@ -982,12 +982,7 @@ private fun showPage(name: String) {
     atualizarHistorico()
 
 } else {
-
-            
         
-        
-  
-    } else {
 
         space(25)
         content.addView(label("NGUIRAZE NET", 21f, red, true))
