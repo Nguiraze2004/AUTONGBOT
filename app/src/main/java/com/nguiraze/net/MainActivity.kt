@@ -647,6 +647,58 @@ private fun showPage(name: String) {
         )
 
         content.addView(executorsRow)
+                // EM CURSO AGORA
+        space(20)
+
+        content.addView(
+            label("➤  EM CURSO AGORA", 14f, white, true)
+        )
+
+        space(10)
+
+        val inProgressBox = panel(14)
+
+        inProgressBox.addView(
+            label("Nenhum envio em andamento", 15f, white, true)
+        )
+
+        inProgressBox.addView(
+            label("Aguarde, por favor...", 12f, gray)
+        )
+
+        addPanel(inProgressBox)
+                // FILA DE ESPERA
+        space(20)
+
+        content.addView(
+            label("⏳  FILA DE ESPERA", 14f, white, true)
+        )
+
+        space(10)
+
+        val waitingBox = panel(14)
+
+        waitingBox.addView(
+            label("(Sem pedidos à espera)", 13f, gray)
+        )
+
+        addPanel(waitingBox)
+                // HISTÓRICO RECENTE
+        space(20)
+
+        content.addView(
+            label("➤  HISTÓRICO RECENTE", 14f, white, true)
+        )
+
+        space(10)
+
+        val historyBox = panel(14)
+
+        historyBox.addView(
+            label("Nenhum registo recente", 13f, gray)
+        )
+
+        addPanel(historyBox)
 
 
 
