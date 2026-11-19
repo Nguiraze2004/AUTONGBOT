@@ -1,3 +1,4 @@
+
 package com.nguiraze.net
 
 import android.app.Activity
@@ -9,6 +10,14 @@ import android.view.View
 import android.widget.*
 
 data class Transferencia(
+    val numeroCliente: String,
+    val quantidadeMB: Int,
+    val executor: String,
+    val dataHora: String,
+    val estado: String
+)
+
+data class Pedido(
     val numeroCliente: String,
     val quantidadeMB: Int,
     val executor: String,
@@ -30,25 +39,28 @@ class MainActivity : Activity() {
     private lateinit var content: LinearLayout
     private lateinit var navigation: LinearLayout
     private var paused = true
+
     private val transferencias = mutableListOf<Transferencia>()
+    private val pedidosFila = mutableListOf<Pedido>()
 
     private fun registarTransferencia(
-    numero: String,
-    mb: Int,
-    executor: String,
-    dataHora: String,
-    estado: String
-) {
-    transferencias.add(
-        Transferencia(
-            numeroCliente = numero,
-            quantidadeMB = mb,
-            executor = executor,
-            dataHora = dataHora,
-            estado = estado
+        numero: String,
+        mb: Int,
+        executor: String,
+        dataHora: String,
+        estado: String
+    ) {
+        transferencias.add(
+            Transferencia(
+                numeroCliente = numero,
+                quantidadeMB = mb,
+                executor = executor,
+                dataHora = dataHora,
+                estado = estado
+            )
         )
-    )
-}
+    }
+
     private fun dp(v: Int): Int =
         (v * resources.displayMetrics.density).toInt()
 
