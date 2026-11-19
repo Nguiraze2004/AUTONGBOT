@@ -1,4 +1,3 @@
-
 package com.nguiraze.net
 
 import android.app.Activity
@@ -8,6 +7,14 @@ import android.graphics.Typeface
 import android.view.Gravity
 import android.view.View
 import android.widget.*
+
+data class Transferencia(
+    val numeroCliente: String,
+    val quantidadeMB: Int,
+    val executor: String,
+    val dataHora: String,
+    val estado: String
+)
 
 class MainActivity : Activity() {
 
