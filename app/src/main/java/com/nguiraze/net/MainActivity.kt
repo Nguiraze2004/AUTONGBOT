@@ -604,6 +604,49 @@ private fun showPage(name: String) {
         )
 
         addPanel(manualBox)
+                space(20)
+
+        content.addView(
+            label("➤  EXECUTORES", 14f, white, true)
+        )
+
+        space(10)
+
+        val executorsRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+        }
+
+        val executor1 = panel(14)
+        executor1.addView(
+            label("EXECUTOR 1", 14f, white, true)
+        )
+        executor1.addView(
+            label("Aguardando ligação", 11f, gray)
+        )
+
+        val executor2 = panel(14)
+        executor2.addView(
+            label("EXECUTOR 2", 14f, white, true)
+        )
+        executor2.addView(
+            label("Aguardando ligação", 11f, gray)
+        )
+
+        executorsRow.addView(
+            executor1,
+            LinearLayout.LayoutParams(0, dp(100), 1f).apply {
+                setMargins(0, 0, dp(5), 0)
+            }
+        )
+
+        executorsRow.addView(
+            executor2,
+            LinearLayout.LayoutParams(0, dp(100), 1f).apply {
+                setMargins(dp(5), 0, 0, 0)
+            }
+        )
+
+        content.addView(executorsRow)
 
 
 
