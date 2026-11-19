@@ -30,6 +30,7 @@ class MainActivity : Activity() {
     private lateinit var content: LinearLayout
     private lateinit var navigation: LinearLayout
     private var paused = true
+    private val transferencias = mutableListOf<Transferencia>()
 
     private fun dp(v: Int): Int =
         (v * resources.displayMetrics.density).toInt()
