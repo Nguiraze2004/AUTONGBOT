@@ -1383,12 +1383,14 @@ private fun updateNavigation(selected: String) {
             }
         }
 
-        navigation.addView(
-            item,
-                    LinearLayout.LayoutParams(0, -1, 1f).apply {
-            marginStart = dp(2)
-            marginEnd = dp(2)
-        }
-    )
+        navigation.addView(  
+        item,  
+        LinearLayout.LayoutParams(0, -1, 1f).apply {  
+            marginStart = dp(2)  
+            marginEnd = dp(2)  
+        }  
+    )  
+}
+
 }
 }
