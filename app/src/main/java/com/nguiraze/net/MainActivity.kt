@@ -765,157 +765,227 @@ private fun showPage(name: String) {
 
     
     
-    } else if (name == "Conclusão") {
+    
+} else if (name == "Conclusão") {
 
-        space(25)
-        content.addView(
-            label("NGUIRAZE NET", 21f, red, true)
-        )
-        space(18)
+    space(25)
+    content.addView(label("NGUIRAZE NET", 21f, red, true))
+    space(18)
 
-        content.addView(
-            label("CONCLUSÃO", 23f, white, true)
-        )
-        space(15)
+    content.addView(label("CONCLUSÃO", 23f, white, true))
+    space(15)
 
-        // ESTADO SELECCIONADO
-        var selectedStatus = "TODOS"
+    var selectedStatus = "TODOS"
 
-        // INDICADORES
-        val statusRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
+    val statusRow = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+    }
+
+    val statusNames = listOf(
+        "TODOS",
+        "CONCLUÍDOS",
+        "ERROS",
+        "INCERTO",
+        "EM FILA"
+    )
+
+    val statusColors = listOf(
+        white, green, red, yellow, blue
+    )
+
+    space(22)
+    content.addView(
+        label("➤  TRANSFERÊNCIAS", 15f, white, true)
+    )
+    space(10)
+
+    val transfersBox = panel(16)
+
+    val filterLabel = label(
+        "FILTRO: TODOS", 12f, red, true
+    )
+
+    val emptyStatus = label(
+        "NENHUMA TRANSFERÊNCIA", 13f, gray, true
+    )
+
+    val emptyDescription = label(
+        "As transferências realizadas aparecerão aqui.",
+        12f, gray
+    )
+
+    val recordsContainer = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+    }
+
+    transfersBox.addView(
+        label("HISTÓRICO DE TRANSFERÊNCIAS", 13f, white, true)
+    )
+
+    transfersBox.addView(filterLabel)
+    transfersBox.addView(recordsContainer)
+
+    addPanel(transfersBox)
+
+    val countLabels = mutableListOf<TextView>()
+
+    fun corresponde(item: Transferencia, filtro: String): Boolean {
+
+        if (filtro == "TODOS") return true
+
+        return when (filtro) {
+
+            "CONCLUÍDOS" ->
+                item.estado.equals("Concluída", true) ||
+                item.estado.equals("Concluído", true)
+
+            "ERROS" ->
+                item.estado.equals("Erro", true)
+
+            "INCERTO" ->
+                item.estado.equals("Incerta", true) ||
+                item.estado.equals("Incerto", true)
+
+            "EM FILA" ->
+                item.estado.equals("Em fila", true)
+
+            else -> false
         }
+    }
 
-        val statusNames = listOf(
-            "TODOS",
-            "CONCLUÍDOS",
-            "ERROS",
-            "INCERTO",
-            "EM FILA"
-        )
+    fun atualizarHistorico() {
 
-        val statusColors = listOf(
-            white, green, red, yellow, blue
-        )
+        // ACTUALIZAR CONTADORES
+        statusNames.forEachIndexed { index, nome ->
 
-        // ÁREA DE TRANSFERÊNCIAS
-        space(22)
-
-        content.addView(
-            label("➤  TRANSFERÊNCIAS", 15f, white, true)
-        )
-
-        space(10)
-
-        val transfersBox = panel(16)
-
-        val filterLabel = label(
-            "FILTRO: TODOS",
-            12f,
-            red,
-            true
-        )
-
-        val emptyStatus = label(
-            "NENHUMA TRANSFERÊNCIA",
-            13f,
-            gray,
-            true
-        )
-
-        val emptyDescription = label(
-            "As transferências realizadas aparecerão aqui.",
-            12f,
-            gray
-        )
-
-        transfersBox.addView(
-            label(
-                "HISTÓRICO DE TRANSFERÊNCIAS",
-                13f,
-                white,
-                true
-            )
-        )
-
-        space(8)
-
-        transfersBox.addView(filterLabel)
-
-        transfersBox.addView(
-            label(
-                "Número do cliente  •  Quantidade de MB",
-                11f,
-                gray
-            )
-        )
-
-        transfersBox.addView(
-            label(
-                "Executor  •  Data e hora  •  Estado",
-                11f,
-                gray
-            )
-        )
-
-        space(12)
-
-        transfersBox.addView(emptyStatus)
-        transfersBox.addView(emptyDescription)
-
-        addPanel(transfersBox)
-
-        // BOTÕES DOS FILTROS
-        statusNames.forEachIndexed { index, statusName ->
-
-            val statusBox = panel(8)
-
-            statusBox.addView(
-                label(
-                    statusName,
-                    9f,
-                    statusColors[index],
-                    true
-                )
-            )
-
-            statusBox.addView(
-                label("0", 22f, white, true)
-            )
-
-            statusBox.alpha =
-                if (statusName == selectedStatus) 1f else 0.65f
-
-            statusBox.setOnClickListener {
-
-                selectedStatus = statusName
-
-                filterLabel.text = "FILTRO: $selectedStatus"
-
-                emptyStatus.text =
-                    "NENHUMA TRANSFERÊNCIA EM $selectedStatus"
-
-                for (i in 0 until statusRow.childCount) {
-    statusRow.getChildAt(i).alpha = 0.65f
-                }
-
-                statusBox.alpha = 1f
+            val total = transferencias.count {
+                corresponde(it, nome)
             }
 
-            statusRow.addView(
-                statusBox,
-                LinearLayout.LayoutParams(
-                    0,
-                    dp(76),
-                    1f
-                ).apply {
-                    setMargins(dp(2), 0, dp(2), 0)
-                }
-            )
+            countLabels[index].text = total.toString()
         }
 
-        // COLOCAR INDICADORES ANTES DAS TRANSFERÊNCIAS
-        content.addView(statusRow, content.indexOfChild(transfersBox))
+        // ACTUALIZAR HISTÓRICO
+        recordsContainer.removeAllViews()
+
+        val filtradas = transferencias.filter {
+            corresponde(it, selectedStatus)
+        }
+
+        if (filtradas.isEmpty()) {
+
+            emptyStatus.text =
+                if (selectedStatus == "TODOS")
+                    "NENHUMA TRANSFERÊNCIA"
+                else
+                    "NENHUMA TRANSFERÊNCIA EM $selectedStatus"
+
+            recordsContainer.addView(emptyStatus)
+            recordsContainer.addView(emptyDescription)
+
+        } else {
+
+            filtradas.reversed().forEach { item ->
+
+                val recordBox = panel(12)
+
+                recordBox.addView(
+                    label(
+                        "CLIENTE: ${item.numeroCliente}",
+                        13f, white, true
+                    )
+                )
+
+                recordBox.addView(
+                    label(
+                        "QUANTIDADE: ${item.quantidadeMB} MB",
+                        12f, gray
+                    )
+                )
+
+                recordBox.addView(
+                    label(
+                        "EXECUTOR: ${item.executor}",
+                        12f, gray
+                    )
+                )
+
+                recordBox.addView(
+                    label(
+                        "DATA/HORA: ${item.dataHora}",
+                        11f, gray
+                    )
+                )
+
+                recordBox.addView(
+                    label(
+                        "ESTADO: ${item.estado}",
+                        12f, green, true
+                    )
+                )
+
+                recordsContainer.addView(recordBox)
+                space(8)
+            }
+        }
+    }
+
+    // CRIAR INDICADORES
+    statusNames.forEachIndexed { index, statusName ->
+
+        val statusBox = panel(8)
+
+        statusBox.addView(
+            label(statusName, 9f, statusColors[index], true)
+        )
+
+        val countText = label("0", 22f, white, true)
+
+        countLabels.add(countText)
+        statusBox.addView(countText)
+
+        statusBox.alpha =
+            if (statusName == selectedStatus) 1f else 0.65f
+
+        statusBox.setOnClickListener {
+
+            selectedStatus = statusName
+
+            filterLabel.text = "FILTRO: $selectedStatus"
+
+            for (i in 0 until statusRow.childCount) {
+                statusRow.getChildAt(i).alpha = 0.65f
+            }
+
+            statusBox.alpha = 1f
+
+            atualizarHistorico()
+        }
+
+        statusRow.addView(
+            statusBox,
+            LinearLayout.LayoutParams(
+                0,
+                dp(76),
+                1f
+            ).apply {
+                setMargins(dp(2), 0, dp(2), 0)
+            }
+        )
+    }
+
+    content.addView(
+        statusRow,
+        content.indexOfChild(transfersBox)
+    )
+
+    atualizarHistorico()
+
+} else {
+
+            
+        
+        
   
     } else {
 
