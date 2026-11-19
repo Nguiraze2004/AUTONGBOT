@@ -692,6 +692,74 @@ content.addView(
 
 space(10)
 
+val addExecutorButton = Button(this).apply {
+    text = "＋  ADICIONAR EXECUTOR"
+    textSize = 13f
+    isAllCaps = false
+    setTextColor(white)
+
+    background = android.graphics.drawable.GradientDrawable().apply {
+        setColor(Color.rgb(15, 22, 32))
+        cornerRadius = dp(14).toFloat()
+        setStroke(dp(1), red)
+    }
+
+    setOnClickListener {
+
+        val proximoNumero = executores.size + 1
+
+        val nomeInput = EditText(this@MainActivity).apply {
+            setText("EXECUTOR $proximoNumero")
+            setSingleLine(true)
+            setTextColor(white)
+            hint = "Nome do executor"
+        }
+
+        android.app.AlertDialog.Builder(this@MainActivity)
+            .setTitle("NOVO EXECUTOR")
+            .setMessage("Digite o nome do executor:")
+            .setView(nomeInput)
+            .setNegativeButton("CANCELAR", null)
+            .setPositiveButton("ADICIONAR") { _, _ ->
+
+                val nome = nomeInput.text.toString().trim()
+
+                if (nome.isEmpty()) {
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Digite o nome do executor.",
+                        Toast.LENGTH_SHORT
+                    ).show()
+
+                } else if (executores.any {
+                    it.nome.equals(nome, ignoreCase = true)
+                }) {
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Este executor já existe.",
+                        Toast.LENGTH_SHORT
+                    ).show()
+
+                } else {
+                    executores.add(
+                        Executor(nome, "OFFLINE")
+                    )
+
+                    showPage("Fila")
+                }
+            }
+            .show()
+    }
+}
+
+content.addView(
+    addExecutorButton,
+    LinearLayout.LayoutParams(-1, dp(50))
+)
+
+space(12)
+
+
 val executorsContainer = LinearLayout(this).apply {
     orientation = LinearLayout.VERTICAL
 }
