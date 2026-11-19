@@ -25,10 +25,16 @@ data class Pedido(
     val estado: String
 )
 
+
 data class Executor(
     val nome: String,
-    var estado: String
+    var estado: String,
+    var vendasConcluidas: Int = 0,
+    var totalMBEnviados: Long = 0,
+    var enviosEmCurso: Int = 0,
+    var falhas: Int = 0
 )
+
 class MainActivity : Activity() {
 
     private val bg = Color.rgb(5, 8, 14)
