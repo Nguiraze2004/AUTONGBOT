@@ -739,6 +739,7 @@ private fun showPage(name: String) {
         addPanel(historyBox)
 
     
+    
     } else if (name == "Conclusão") {
 
         space(25)
@@ -752,7 +753,10 @@ private fun showPage(name: String) {
         )
         space(15)
 
-        // INDICADORES DE ESTADO
+        // ESTADO SELECCIONADO
+        var selectedStatus = "TODOS"
+
+        // INDICADORES
         val statusRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
         }
@@ -769,40 +773,9 @@ private fun showPage(name: String) {
             white, green, red, yellow, blue
         )
 
-        statusNames.forEachIndexed { index, statusName ->
-
-            val statusBox = panel(8)
-
-            statusBox.addView(
-                label(
-                    statusName,
-                    9f,
-                    statusColors[index],
-                    true
-                )
-            )
-
-            statusBox.addView(
-                label("0", 22f, white, true)
-            )
-
-            statusRow.addView(
-                statusBox,
-                LinearLayout.LayoutParams(
-                    0,
-                    dp(76),
-                    1f
-                ).apply {
-                    setMargins(dp(2), 0, dp(2), 0)
-                }
-            )
-        }
-
-        content.addView(statusRow)
-
+        // ÁREA DE TRANSFERÊNCIAS
         space(22)
 
-        // LISTA DE TRANSFERÊNCIAS
         content.addView(
             label("➤  TRANSFERÊNCIAS", 15f, white, true)
         )
@@ -810,6 +783,26 @@ private fun showPage(name: String) {
         space(10)
 
         val transfersBox = panel(16)
+
+        val filterLabel = label(
+            "FILTRO: TODOS",
+            12f,
+            red,
+            true
+        )
+
+        val emptyStatus = label(
+            "NENHUMA TRANSFERÊNCIA",
+            13f,
+            gray,
+            true
+        )
+
+        val emptyDescription = label(
+            "As transferências realizadas aparecerão aqui.",
+            12f,
+            gray
+        )
 
         transfersBox.addView(
             label(
@@ -819,6 +812,10 @@ private fun showPage(name: String) {
                 true
             )
         )
+
+        space(8)
+
+        transfersBox.addView(filterLabel)
 
         transfersBox.addView(
             label(
@@ -836,25 +833,65 @@ private fun showPage(name: String) {
             )
         )
 
-        transfersBox.addView(
-            label(
-                "NENHUMA TRANSFERÊNCIA",
-                13f,
-                gray,
-                true
-            )
-        )
+        space(12)
 
-        transfersBox.addView(
-            label(
-                "As transferências realizadas aparecerão aqui.",
-                12f,
-                gray
-            )
-        )
+        transfersBox.addView(emptyStatus)
+        transfersBox.addView(emptyDescription)
 
         addPanel(transfersBox)
 
+        // BOTÕES DOS FILTROS
+        statusNames.forEachIndexed { index, statusName ->
+
+            val statusBox = panel(8)
+
+            statusBox.addView(
+                label(
+                    statusName,
+                    9f,
+                    statusColors[index],
+                    true
+                )
+            )
+
+            statusBox.addView(
+                label("0", 22f, white, true)
+            )
+
+            statusBox.alpha =
+                if (statusName == selectedStatus) 1f else 0.65f
+
+            statusBox.setOnClickListener {
+
+                selectedStatus = statusName
+
+                filterLabel.text = "FILTRO: $selectedStatus"
+
+                emptyStatus.text =
+                    "NENHUMA TRANSFERÊNCIA EM $selectedStatus"
+
+                for (i in 0 until statusRow.childCount) {
+    statusRow.getChildAt(i).alpha = 0.65f
+                }
+
+                statusBox.alpha = 1f
+            }
+
+            statusRow.addView(
+                statusBox,
+                LinearLayout.LayoutParams(
+                    0,
+                    dp(76),
+                    1f
+                ).apply {
+                    setMargins(dp(2), 0, dp(2), 0)
+                }
+            )
+        }
+
+        // COLOCAR INDICADORES ANTES DAS TRANSFERÊNCIAS
+        content.addView(statusRow, content.indexOfChild(transfersBox))
+  
     } else {
 
         space(25)
