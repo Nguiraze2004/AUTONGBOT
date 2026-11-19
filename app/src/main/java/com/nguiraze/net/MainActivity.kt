@@ -1317,6 +1317,36 @@ if (pedidosFila.isEmpty()) {
     )
     space(18)
 
+    // INFORMAÇÕES REAIS DOS CARTÕES SIM
+    val simInfoBox = panel(16)
+
+    simInfoBox.addView(
+        label("CARTÕES SIM DETECTADOS", 14f, green, true)
+    )
+
+    simInfoBox.addView(
+        label(consultarCartoesSIM(), 12f, gray)
+    )
+
+    val atualizarSimButton = Button(this).apply {
+        text = "ATUALIZAR CARTÕES SIM"
+        isAllCaps = false
+        setTextColor(white)
+
+        setOnClickListener {
+            showPage("SIMs")
+            updateNavigation("SIMs")
+        }
+    }
+
+    simInfoBox.addView(
+        atualizarSimButton,
+        LinearLayout.LayoutParams(-1, dp(45))
+    )
+
+    addPanel(simInfoBox)
+    space(14)
+
     fun simCard(numero: String, usados: Int, ativo: Boolean) {
         val box = panel(18)
 
