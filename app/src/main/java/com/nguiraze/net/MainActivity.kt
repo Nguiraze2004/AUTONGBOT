@@ -744,18 +744,58 @@ manualBox.addView(
 
         space(10)
 
-                val waitingBox = panel(14)
+                
+val waitingBox = panel(14)
+
+if (pedidosFila.isEmpty()) {
+
+    waitingBox.addView(
+        label("⏳  NENHUM PEDIDO NA FILA", 13f, gray, true)
+    )
+
+    waitingBox.addView(
+        label(
+            "Os pedidos aguardando envio aparecerão aqui.",
+            12f, gray
+        )
+    )
+
+} else {
+
+    for (pedido in pedidosFila) {
 
         waitingBox.addView(
-            label("⏳  NENHUM PEDIDO NA FILA", 13f, gray, true)
+            label("📱 ${pedido.numeroCliente}", 14f, white, true)
         )
 
         waitingBox.addView(
-            label(
-                "Os pedidos aguardando envio aparecerão aqui.",
-                12f, gray
-            )
+            label("📦 ${pedido.quantidadeMB} MB", 12f, gray)
         )
+
+        waitingBox.addView(
+            label("Executor: ${pedido.executor}", 12f, gray)
+        )
+
+        waitingBox.addView(
+            label("Estado: ${pedido.estado}", 12f, yellow, true)
+        )
+
+        waitingBox.addView(
+            label("Data: ${pedido.dataHora}", 11f, gray)
+        )
+
+        waitingBox.addView(
+            View(this).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    1, dp(8)
+                )
+            }
+        )
+    }
+}
+
+addPanel(waitingBox)
+
 
         addPanel(waitingBox)
                 // HISTÓRICO RECENTE
