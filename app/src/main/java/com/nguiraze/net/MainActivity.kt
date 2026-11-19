@@ -8,6 +8,11 @@ import android.graphics.Typeface
 import android.view.Gravity
 import android.view.View
 import android.widget.*
+import android.content.Context
+import android.telephony.SubscriptionManager
+import android.telephony.TelephonyManager
+import android.Manifest
+import android.content.pm.PackageManager
 
 data class Transferencia(
     val numeroCliente: String,
@@ -36,6 +41,41 @@ data class Executor(
 )
 
 class MainActivity : Activity() {
+    private fun consultarCartoesSIM(): String {
+
+    if (
+        checkSelfPermission(Manifest.permission.READ_PHONE_STATE)
+        != PackageManager.PERMISSION_GRANTED
+    ) {
+        return "Permissão para consultar SIM não concedida."
+    }
+
+    val subscriptionManager =
+        getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE)
+            as SubscriptionManager
+
+    val cartoes = subscriptionManager.activeSubscriptionInfoList
+        ?: return "Nenhum cartão SIM detectado."
+
+    val resultado = StringBuilder()
+
+    cartoes.forEach { sim ->
+
+        resultado.append(
+            "SIM ${sim.simSlotIndex + 1}\n"
+        )
+
+        resultado.append(
+            "Operadora: ${sim.carrierName}\n"
+        )
+
+        resultado.append(
+            "ID da subscrição: ${sim.subscriptionId}\n\n"
+        )
+    }
+
+    return resultado.toString()
+    }
 
     private val bg = Color.rgb(5, 8, 14)
     private val card = Color.rgb(14, 19, 28)
