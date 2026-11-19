@@ -852,3 +852,4 @@ private fun updateNavigation(selected: String) {
         )
     }
 }
+}
