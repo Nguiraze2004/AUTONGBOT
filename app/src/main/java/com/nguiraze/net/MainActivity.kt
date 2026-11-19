@@ -679,10 +679,17 @@ private fun showPage(name: String) {
 
         space(10)
 
-        val waitingBox = panel(14)
+                val waitingBox = panel(14)
 
         waitingBox.addView(
-            label("(Sem pedidos à espera)", 13f, gray)
+            label("⏳  NENHUM PEDIDO NA FILA", 13f, gray, true)
+        )
+
+        waitingBox.addView(
+            label(
+                "Os pedidos aguardando envio aparecerão aqui.",
+                12f, gray
+            )
         )
 
         addPanel(waitingBox)
@@ -695,10 +702,37 @@ private fun showPage(name: String) {
 
         space(10)
 
-        val historyBox = panel(14)
+                val historyBox = panel(14)
 
         historyBox.addView(
-            label("Nenhum registo recente", 13f, gray)
+            label("SEM REGISTOS RECENTES", 13f, gray, true)
+        )
+
+        historyBox.addView(
+            label(
+                "Os envios concluídos aparecerão aqui.",
+                12f, gray
+            )
+        )
+
+        val historyButton = android.widget.Button(this).apply {
+            text = "Ver Todos"
+            textSize = 12f
+            isAllCaps = false
+            setTextColor(white)
+            background = android.graphics.drawable.GradientDrawable().apply {
+                setColor(Color.rgb(20, 27, 38))
+                cornerRadius = dp(12).toFloat()
+            }
+            setOnClickListener {
+                showPage("Conclusão")
+                updateNavigation("Conclusão")
+            }
+        }
+
+        historyBox.addView(
+            historyButton,
+            LinearLayout.LayoutParams(-1, dp(42))
         )
 
         addPanel(historyBox)
