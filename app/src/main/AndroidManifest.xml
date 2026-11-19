@@ -1,7 +1,11 @@
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Permissão para executar USSD -->
     <uses-permission android:name="android.permission.CALL_PHONE" />
+
+    <!-- Permissão para consultar o estado dos cartões SIM -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
 
     <application
         android:allowBackup="true"
@@ -23,3 +27,4 @@
     </application>
 
 </manifest>
+
