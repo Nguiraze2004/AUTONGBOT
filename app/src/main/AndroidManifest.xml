@@ -4,7 +4,7 @@
     <!-- Permissão para executar USSD -->
     <uses-permission android:name="android.permission.CALL_PHONE" />
 
-    <!-- Permissão para consultar o estado dos cartões SIM -->
+    <!-- Permissão para consultar os cartões SIM -->
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
 
     <application
@@ -13,6 +13,7 @@
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
 
+        <!-- Ecrã principal -->
         <activity
             android:name=".MainActivity"
             android:exported="true">
@@ -24,7 +25,22 @@
 
         </activity>
 
+        <!-- Serviço para observar menus USSD -->
+        <service
+            android:name=".UssdAccessibilityService"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:exported="true">
+
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service_config" />
+
+        </service>
+
     </application>
 
 </manifest>
-
