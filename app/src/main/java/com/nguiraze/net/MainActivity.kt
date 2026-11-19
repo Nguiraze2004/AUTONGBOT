@@ -1333,11 +1333,14 @@ private fun updateNavigation(selected: String) {
     navigation.removeAllViews()
 
     val names = listOf(
-    "Início", "Fila", "SIMs",
-    "Conclusão", "Pagamentos", "Config"
-)
+        "Início",
+        "Fila",
+        "Conclusão",
+        "Pagamentos",
+        "Config"
+    )
 
-    val icons = listOf("⌂", "☷", "▣", "✓", "ⓢ", "⚙")
+    val icons = listOf("⌂", "☷", "✓", "ⓢ", "⚙")
 
     names.forEachIndexed { index, name ->
         val active = name == selected
@@ -1388,5 +1391,4 @@ private fun updateNavigation(selected: String) {
             }
         )
     }
-}
 }
