@@ -180,6 +180,21 @@ root.requestApplyInsets()
 
         showHome()
         updateNavigation("Início")
+        if (
+    checkSelfPermission(Manifest.permission.READ_PHONE_STATE)
+    != PackageManager.PERMISSION_GRANTED
+) {
+    requestPermissions(
+        arrayOf(Manifest.permission.READ_PHONE_STATE),
+        101
+    )
+} else {
+    Toast.makeText(
+        this,
+        consultarCartoesSIM(),
+        Toast.LENGTH_LONG
+    ).show()
+        }
     }
 
     private fun label(
