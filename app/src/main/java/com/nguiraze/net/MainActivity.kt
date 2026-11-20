@@ -944,6 +944,43 @@ executores.forEach { executor ->
     )
 
     executorBox.addView(header)
+    
+    val estadoButton = Button(this).apply {
+        text = if (executor.estado == "LIVRE") {
+            "● COLOCAR OFFLINE"
+        } else {
+            "● COLOCAR LIVRE"
+        }
+
+        textSize = 11f
+        isAllCaps = false
+        setTextColor(white)
+
+        background = android.graphics.drawable.GradientDrawable().apply {
+            setColor(Color.rgb(15, 22, 32))
+            cornerRadius = dp(12).toFloat()
+            setStroke(
+                dp(1),
+                if (executor.estado == "LIVRE") yellow else green
+            )
+        }
+
+        setOnClickListener {
+            executor.estado = if (executor.estado == "LIVRE") {
+                "OFFLINE"
+            } else {
+                "LIVRE"
+            }
+
+            showPage("Fila")
+        }
+    }
+
+    executorBox.addView(
+        estadoButton,
+        LinearLayout.LayoutParams(-1, dp(42))
+    )
+
 
     val statsRow1 = LinearLayout(this).apply {
     orientation = LinearLayout.HORIZONTAL
