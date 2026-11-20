@@ -1659,10 +1659,6 @@ if (pedidosFila.isEmpty()) {
 }
 
 private fun updateNavigation(selected: String) {
-
-
-
-private fun updateNavigation(selected: String) {
     navigation.removeAllViews()
 
     val names = listOf(
