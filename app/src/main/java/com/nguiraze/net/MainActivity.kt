@@ -130,6 +130,57 @@ class MainActivity : Activity() {
     }
 
 
+private fun despacharProximoPedido() {
+
+    if (pedidosFila.isEmpty()) return
+
+    val agenteLivre = executores.firstOrNull {
+        it.estado == "LIVRE"
+    }
+
+    if (agenteLivre == null) {
+        Toast.makeText(
+            this,
+            "Nenhum executor disponível. Pedido mantido na fila.",
+            Toast.LENGTH_LONG
+        ).show()
+
+        showPage("Fila")
+        return
+    }
+
+    if (selectedSimSubscriptionId == -1) {
+        Toast.makeText(
+            this,
+            "Selecione primeiro um SIM.",
+            Toast.LENGTH_LONG
+        ).show()
+        return
+    }
+
+    val pedido = pedidosFila.removeAt(0)
+
+    agenteLivre.estado = "OCUPADO"
+    agenteLivre.enviosEmCurso++
+
+    registarTransferencia(
+        pedido.numeroCliente,
+        pedido.quantidadeMB,
+        agenteLivre.nome,
+        pedido.dataHora,
+        "Em processamento"
+    )
+
+    Toast.makeText(
+        this,
+        "${agenteLivre.nome} recebeu o pedido.",
+        Toast.LENGTH_SHORT
+    ).show()
+
+    showPage("Fila")
+    abrirUSSDManual()
+}
+
 private fun dp(v: Int): Int =
     (v * resources.displayMetrics.density).toInt()
 
