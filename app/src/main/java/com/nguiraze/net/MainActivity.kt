@@ -1885,7 +1885,81 @@ if (pedidosFila.isEmpty()) {
         )
     )
 
-        addPanel(infoBox)
+                addPanel(infoBox)
+
+} else if (name == "Diagnóstico USSD") {
+
+    space(20)
+
+    content.addView(
+        label("DIAGNÓSTICO USSD", 21f, red, true)
+    )
+
+    space(12)
+
+    val debugBox = panel(16)
+
+    debugBox.addView(
+        label("ÚLTIMA LEITURA DA ACESSIBILIDADE", 14f, white, true)
+    )
+
+    val leituraView = label(
+        "Aguardando leitura do USSD...",
+        13f,
+        green
+    )
+
+    leituraView.setTextIsSelectable(true)
+    debugBox.addView(leituraView)
+
+    val atualizarButton = Button(this).apply {
+        text = "↻ ATUALIZAR LEITURA"
+        isAllCaps = false
+        setTextColor(white)
+        setBackgroundColor(red)
+
+        setOnClickListener {
+            val prefs = getSharedPreferences(
+                "ussd_debug",
+                MODE_PRIVATE
+            )
+
+            val leitura = prefs.getString(
+                "ultima_leitura",
+                "Nenhuma leitura recebida."
+            )
+
+            val janela = prefs.getString(
+                "ultima_janela",
+                "Desconhecida"
+            )
+
+            leituraView.text = "JANELA: $janela\n\n$leitura"
+        }
+    }
+
+    debugBox.addView(
+        atualizarButton,
+        LinearLayout.LayoutParams(-1, dp(46))
+    )
+
+    addPanel(debugBox)
+
+    val voltarButton = Button(this).apply {
+        text = "VOLTAR AO INÍCIO"
+        isAllCaps = false
+        setTextColor(white)
+
+        setOnClickListener {
+            showHome()
+            updateNavigation("Início")
+        }
+    }
+
+    content.addView(
+        voltarButton,
+        LinearLayout.LayoutParams(-1, dp(46))
+    )
 
 } else {
 
