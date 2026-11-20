@@ -1316,7 +1316,6 @@ if (pedidosFila.isEmpty()) {
     atualizarHistorico()
 
 
-
 } else if (name == "SIMs") {
 
     space(18)
@@ -1324,44 +1323,13 @@ if (pedidosFila.isEmpty()) {
     content.addView(
         label("NGUIRAZE NET", 20f, red, true)
     )
+
     space(12)
 
-    val tituloRow = LinearLayout(this).apply {
-        orientation = LinearLayout.HORIZONTAL
-        gravity = Gravity.CENTER_VERTICAL
-    }
-
-    tituloRow.addView(
-        label("CARTÕES SIM", 20f, white, true),
-        LinearLayout.LayoutParams(0, -2, 1f)
+    content.addView(
+        label("CARTÕES SIM", 20f, white, true)
     )
 
-    val definicoesButton = Button(this).apply {
-        text = "⚙"
-        textSize = 19f
-        isAllCaps = false
-        setTextColor(white)
-        setOnClickListener {
-            try {
-                startActivity(
-                    android.content.Intent(
-                        android.provider.Settings.ACTION_WIRELESS_SETTINGS
-                    )
-                )
-            } catch (e: Exception) {
-                Toast.makeText(
-                    this@MainActivity,
-                    "Não foi possível abrir as definições.",
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
-        }
-    }
-
-    tituloRow.addView(definicoesButton)
-    content.addView(tituloRow)
-space(12)
-    content.addView(tituloRow)
     space(12)
 
     val subscriptionManager =
@@ -1369,9 +1337,16 @@ space(12)
             as SubscriptionManager
 
     val cartoes = try {
-        subscriptionManager.activeSubscriptionInfoList
-            ?.sortedBy { it.simSlotIndex }
-            ?: emptyList()
+        if (
+            checkSelfPermission(Manifest.permission.READ_PHONE_STATE)
+            == PackageManager.PERMISSION_GRANTED
+        ) {
+            subscriptionManager.activeSubscriptionInfoList
+                ?.sortedBy { it.simSlotIndex }
+                ?: emptyList()
+        } else {
+            emptyList()
+        }
     } catch (e: Exception) {
         emptyList()
     }
@@ -1379,8 +1354,282 @@ space(12)
     if (cartoes.isEmpty()) {
 
         content.addView(
-            label("Nenhum cartão SIM ativo detetado.", 13f, gray)
+            label(
+                "Nenhum cartão SIM ativo detetado ou permissão não concedida.",
+                13f,
+                gray
+            )
         )
+
+    } else {
+
+        // Selecionar o primeiro SIM automaticamente na primeira abertura
+        if (cartoes.none {
+                it.subscriptionId == selectedSimSubscriptionId
+            }
+        ) {
+            selectedSimSubscriptionId =
+                cartoes.first().subscriptionId
+        }
+
+        cartoes.forEach { sim ->
+
+            val numeroSim = try {
+                sim.number?.takeIf { it.isNotBlank() }
+                    ?: "Número indisponível"
+            } catch (e: Exception) {
+                "Número indisponível"
+            }
+
+            val operadora = sim.carrierName
+                ?.toString()
+                ?.takeIf { it.isNotBlank() }
+                ?: "Operadora desconhecida"
+
+            val ativo =
+                sim.subscriptionId == selectedSimSubscriptionId
+
+            val usados = 0
+            val restantes = 10 - usados
+
+            val simBox = panel(14)
+
+            fun simSpace(height: Int) {
+                simBox.addView(
+                    View(this),
+                    LinearLayout.LayoutParams(1, dp(height))
+                )
+            }
+
+            // CABEÇALHO
+            val cabecalho = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+            }
+
+            cabecalho.addView(
+                label(
+                    "SIM ${sim.simSlotIndex + 1}",
+                    17f,
+                    white,
+                    true
+                ),
+                LinearLayout.LayoutParams(0, -2, 1f)
+            )
+
+            cabecalho.addView(
+                label(
+                    if (ativo) "● ACTIVO" else "● DISPONÍVEL",
+                    11f,
+                    if (ativo) green else gray,
+                    true
+                )
+            )
+
+            simBox.addView(cabecalho)
+            simSpace(10)
+
+            // NÚMERO
+            val numeroRow = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+            }
+
+            numeroRow.addView(
+                label("☎", 19f, Color.rgb(220, 95, 105), true)
+            )
+
+            numeroRow.addView(
+                label(
+                    "  $numeroSim",
+                    16f,
+                    Color.rgb(220, 95, 105),
+                    true
+                )
+            )
+
+            simBox.addView(numeroRow)
+
+            simBox.addView(
+                label(operadora, 12f, gray)
+            )
+
+            simSpace(14)
+
+            // CONTADOR
+            val contadorRow = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+            }
+
+            val circulo = TextView(this).apply {
+                text = "$usados/10"
+                textSize = 13f
+                setTextColor(white)
+                gravity = Gravity.CENTER
+
+                background =
+                    android.graphics.drawable.GradientDrawable().apply {
+                        shape =
+                            android.graphics.drawable.GradientDrawable.OVAL
+                        setColor(Color.rgb(28, 39, 52))
+                        setStroke(dp(2), green)
+                    }
+            }
+
+            contadorRow.addView(
+                circulo,
+                LinearLayout.LayoutParams(dp(52), dp(52))
+            )
+
+            contadorRow.addView(
+                label(
+                    "   $restantes restantes",
+                    13f,
+                    gray,
+                    true
+                )
+            )
+
+            contadorRow.addView(
+                View(this),
+                LinearLayout.LayoutParams(0, 1, 1f)
+            )
+
+            if (ativo) {
+
+                contadorRow.addView(
+                    label("EM USO", 11f, green, true)
+                )
+
+            } else {
+
+                val usarButton = Button(this).apply {
+                    text = "USAR"
+                    isAllCaps = false
+                    setTextColor(white)
+                    setBackgroundColor(red)
+
+                    setOnClickListener {
+                        selectedSimSubscriptionId =
+                            sim.subscriptionId
+
+                        Toast.makeText(
+                            this@MainActivity,
+                            "SIM ${sim.simSlotIndex + 1} selecionado na aplicação.",
+                            Toast.LENGTH_SHORT
+                        ).show()
+
+                        showPage("SIMs")
+                        updateNavigation("Início")
+                    }
+                }
+
+                contadorRow.addView(usarButton)
+            }
+
+            simBox.addView(contadorRow)
+            simSpace(14)
+
+            // CONSULTOR DE MB
+            val mbBox = panel(12)
+
+            mbBox.addView(
+                label("CONSULTOR DE MB", 12f, white, true)
+            )
+
+            val saldoRow = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+            }
+
+            saldoRow.addView(
+                label("X GB", 23f, green, true),
+                LinearLayout.LayoutParams(0, -2, 1f)
+            )
+
+            val editarButton = Button(this).apply {
+                text = "✎"
+                isAllCaps = false
+                setTextColor(white)
+
+                setOnClickListener {
+                    val campo = EditText(this@MainActivity).apply {
+                        hint = "Saldo em GB"
+                        inputType =
+                            android.text.InputType.TYPE_CLASS_NUMBER or
+                            android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+                    }
+
+                    android.app.AlertDialog.Builder(this@MainActivity)
+                        .setTitle(
+                            "Editar saldo SIM ${sim.simSlotIndex + 1}"
+                        )
+                        .setView(campo)
+                        .setPositiveButton("GUARDAR") { _, _ ->
+                            Toast.makeText(
+                                this@MainActivity,
+                                "Edição do saldo será ligada na próxima etapa.",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                        .setNegativeButton("CANCELAR", null)
+                        .show()
+                }
+            }
+
+            saldoRow.addView(editarButton)
+            mbBox.addView(saldoRow)
+
+            mbBox.addView(
+                label(
+                    "Saldo de megas · Ainda não consultado",
+                    11f,
+                    gray
+                )
+            )
+
+            val atualizarGB = Button(this).apply {
+                text = "↻ ACTUALIZAR GB"
+                isAllCaps = false
+                setTextColor(white)
+
+                setOnClickListener {
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Consulta de saldo ainda não implementada.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+
+            mbBox.addView(
+                atualizarGB,
+                LinearLayout.LayoutParams(-1, dp(42))
+            )
+
+            simBox.addView(mbBox)
+
+            // CADA SIM FICA NUM CARTÃO VERTICAL SEPARADO
+            addPanel(simBox, 14)
+        }
+    }
+
+    val infoBox = panel(12)
+
+    infoBox.addView(
+        label("INFORMAÇÃO", 13f, yellow, true)
+    )
+
+    infoBox.addView(
+        label(
+            "O contador só aumenta após confirmação de sucesso da operadora.",
+            11f,
+            gray
+        )
+    )
+
+    addPanel(infoBox)
 
     } else {
 
