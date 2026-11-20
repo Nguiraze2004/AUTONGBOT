@@ -1747,45 +1747,8 @@ if (pedidosFila.isEmpty()) {
                 contadorRow.addView(
                     label("EM USO", 11f, green, true)
                 )
-            } else {
-                val usarButton = Button(this).apply {
-                    text = "USAR"
-                    isAllCaps = false
-                    setTextColor(white)
-                    setOnClickListener {
-                        Toast.makeText(
-                            this@MainActivity,
-                            "A seleção real do SIM será ligada na próxima etapa.",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                }
 
-                contadorRow.addView(usarButton)
-            }
-
-            simBox.addView(contadorRow)
-            space(12)
-
-            val mbBox = panel(12)
-
-            mbBox.addView(
-                label("CONSULTOR DE MB", 12f, white, true)
-            )
-
-            space(6)
-
-            val saldoRow = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
-            }
-
-            saldoRow.addView(
-                label("X GB", 23f, green, true),
-                LinearLayout.LayoutParams(0, -2, 1f)
-            )
-
-
+        
     space(25)
     content.addView(label("NGUIRAZE NET", 21f, red, true))
     space(20)
