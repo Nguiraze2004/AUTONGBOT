@@ -129,10 +129,11 @@ class MainActivity : Activity() {
         )
     }
 
-    private fun dp(v: Int): Int =
-    
-private fun abrirUSSDManual() {
 
+private fun dp(v: Int): Int =
+    (v * resources.displayMetrics.density).toInt()
+
+private fun abrirUSSDManual() {
     val subscriptionManager =
         getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE)
             as SubscriptionManager
@@ -169,7 +170,6 @@ private fun abrirUSSDManual() {
         ).show()
 
         startActivity(intent)
-
     } catch (e: Exception) {
         Toast.makeText(
             this,
@@ -179,10 +179,9 @@ private fun abrirUSSDManual() {
     }
 }
 
-        (v * resources.displayMetrics.density).toInt()
+override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
 
         window.statusBarColor = Color.BLACK
         window.navigationBarColor = Color.BLACK
