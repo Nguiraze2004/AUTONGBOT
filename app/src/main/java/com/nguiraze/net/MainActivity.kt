@@ -1437,7 +1437,7 @@ if (pedidosFila.isEmpty()) {
             }
 
             numeroRow.addView(
-                label("☎", 19f, Color.rgb(220, 95, 105), true)
+                label("📞", 19f, Color.rgb(220, 95, 105), true)
             )
 
             numeroRow.addView(
@@ -1654,8 +1654,12 @@ if (pedidosFila.isEmpty()) {
         )
     )
 
-    addPanel(box)
+        addPanel(box)
 }
+}
+
+private fun updateNavigation(selected: String) {
+
 
 
 private fun updateNavigation(selected: String) {
