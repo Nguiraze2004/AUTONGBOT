@@ -259,18 +259,39 @@ override fun onCreate(savedInstanceState: Bundle?) {
             -1, 0, 1f
         ))
 
-        navigation = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
-            setBackgroundColor(Color.rgb(10, 14, 22))
-            setPadding(dp(5), dp(7), dp(5), dp(7))
-        }
+        
+navigation = LinearLayout(this).apply {
+    orientation = LinearLayout.HORIZONTAL
+    gravity = Gravity.CENTER
+    setBackgroundColor(Color.rgb(10, 14, 22))
+    setPadding(dp(5), dp(7), dp(5), dp(7))
+}
 
-        root.addView(navigation, LinearLayout.LayoutParams(
-    -1, dp(65)
-))
+// BOTÃO SIMs
+val simsButton = Button(this).apply {
+    text = "📱 SIMs"
+    textSize = 12f
+    isAllCaps = false
+    setTextColor(white)
+    setBackgroundColor(Color.TRANSPARENT)
+
+    setOnClickListener {
+        showPage("SIMs")
+    }
+}
+
+navigation.addView(
+    simsButton,
+    LinearLayout.LayoutParams(0, -1, 1f)
+)
+
+root.addView(
+    navigation,
+    LinearLayout.LayoutParams(-1, dp(65))
+)
 
 root.setOnApplyWindowInsetsListener { _, insets ->
+
 
     val bottomInset = insets.systemWindowInsetBottom
 
