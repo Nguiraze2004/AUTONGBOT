@@ -1630,9 +1630,11 @@ if (pedidosFila.isEmpty()) {
         )
     )
 
-    addPanel(infoBox)
+        addPanel(infoBox)
 
-        
+} else {
+
+      
     space(25)
     content.addView(label("NGUIRAZE NET", 21f, red, true))
     space(20)
