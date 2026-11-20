@@ -9,70 +9,62 @@ import android.util.Log
 class UssdAccessibilityService : AccessibilityService() {
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-
         if (event == null) return
 
-        val textos = event.text
-            .map { it.toString() }
-            .filter { it.isNotBlank() }
+        val textos = mutableListOf<String>()
 
-        if (textos.isNotEmpty()) {
-            Log.d(
-                "NGUIRAZE_USSD",
-                "Janela: ${event.packageName} | Texto: $textos"
-            )
+        event.text?.forEach {
+            if (it.toString().isNotBlank()) {
+                textos.add(it.toString())
+            }
         }
 
-        // Consultar os elementos visíveis da janela
         val raiz = rootInActiveWindow
 
         if (raiz != null) {
-            Log.d(
-                "NGUIRAZE_USSD",
-                "A analisar janela: ${raiz.packageName}"
-            )
+            analisarElementos(raiz, 0, textos)
+        }
 
-            analisarElementos(raiz, 0)
+        val leitura = textos.distinct().joinToString("\n")
+
+        if (leitura.isNotBlank()) {
+            getSharedPreferences(
+                "ussd_debug",
+                MODE_PRIVATE
+            ).edit()
+                .putString("ultima_leitura", leitura)
+                .putString(
+                    "ultima_janela",
+                    event.packageName?.toString() ?: "Desconhecida"
+                )
+                .apply()
+
+            Log.d("NGUIRAZE_USSD", leitura)
         }
     }
 
     private fun analisarElementos(
         node: AccessibilityNodeInfo,
-        nivel: Int
+        nivel: Int,
+        textos: MutableList<String>
     ) {
         if (nivel > 8) return
 
-        val texto = node.text?.toString().orEmpty()
-        val descricao = node.contentDescription?.toString().orEmpty()
-        val identificador = node.viewIdResourceName ?: ""
+        node.text?.toString()?.let {
+            if (it.isNotBlank()) textos.add(it)
+        }
 
-        if (
-            texto.isNotBlank() ||
-            descricao.isNotBlank() ||
-            node.isEditable ||
-            node.isClickable
-        ) {
-            Log.d(
-                "NGUIRAZE_USSD",
-                "Elemento: classe=${node.className} | " +
-                "texto=$texto | descrição=$descricao | " +
-                "id=$identificador | " +
-                "editável=${node.isEditable} | " +
-                "clicável=${node.isClickable}"
-            )
+        node.contentDescription?.toString()?.let {
+            if (it.isNotBlank()) textos.add(it)
         }
 
         for (i in 0 until node.childCount) {
             val filho = node.getChild(i) ?: continue
-            analisarElementos(filho, nivel + 1)
+            analisarElementos(filho, nivel + 1, textos)
         }
     }
 
     override fun onInterrupt() {
-        Log.d(
-            "NGUIRAZE_USSD",
-            "Serviço interrompido"
-        )
+        Log.d("NGUIRAZE_USSD", "Serviço interrompido")
     }
 }
-   
