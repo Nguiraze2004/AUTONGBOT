@@ -636,14 +636,115 @@ private fun shortcutRow(items: List<Pair<String, Int>>) {
         return box
     }
 
-    private fun simCard(name: String): LinearLayout {
-        val box = panel(11)
-        box.addView(label(name, 13f, green, true))
-        box.addView(label("0 / 10", 23f, white, true))
-        box.addView(label("Transferências", 10f, gray))
-        box.addView(label("Limite diário: 10", 10f, gray))
-        return box
+    
+private fun simCard(name: String): LinearLayout {
+
+    val slot = if (name.endsWith("1")) 0 else 1
+
+    val subscriptionManager =
+        getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE)
+            as SubscriptionManager
+
+    val cartoes = try {
+        subscriptionManager.activeSubscriptionInfoList
+    } catch (e: Exception) {
+        null
     }
+
+    val sim = cartoes?.firstOrNull {
+        it.simSlotIndex == slot
+    }
+
+    val selecionado = sim != null &&
+        sim.subscriptionId == selectedSimSubscriptionId
+
+    val box = panel(14)
+
+    val fundo = android.graphics.drawable.GradientDrawable().apply {
+        setColor(
+            if (selecionado) Color.rgb(8, 28, 20)
+            else Color.rgb(10, 14, 22)
+        )
+        cornerRadius = dp(22).toFloat()
+        setStroke(
+            dp(if (selecionado) 2 else 1),
+            if (selecionado) green else Color.rgb(40, 50, 65)
+        )
+    }
+
+    box.background = fundo
+    box.setPadding(dp(14), dp(14), dp(14), dp(14))
+
+    val cabecalho = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+    }
+
+    cabecalho.addView(
+        label(name, 17f, if (selecionado) green else white, true),
+        LinearLayout.LayoutParams(0, -2, 1f)
+    )
+
+    if (selecionado) {
+        cabecalho.addView(
+            label("●", 19f, green, true)
+        )
+    }
+
+    box.addView(cabecalho)
+    space(8)
+
+    box.addView(
+        label("0 / 10", 30f, white, true)
+    )
+
+    box.addView(
+        label("Transferências", 13f, gray)
+    )
+
+    space(8)
+
+    box.addView(
+        label("Limite diário: 10", 12f, gray)
+    )
+
+    space(12)
+
+    val usarButton = Button(this).apply {
+        text = if (selecionado) "✓ SELECIONADO" else "USAR"
+        textSize = 12f
+        isAllCaps = false
+        setTextColor(white)
+
+        setOnClickListener {
+            if (sim == null) {
+                Toast.makeText(
+                    this@MainActivity,
+                    "Este SIM não está ativo.",
+                    Toast.LENGTH_SHORT
+                ).show()
+            } else {
+                selectedSimSubscriptionId = sim.subscriptionId
+
+                Toast.makeText(
+                    this@MainActivity,
+                    "$name selecionado!",
+                    Toast.LENGTH_SHORT
+                ).show()
+
+                showPage("Início")
+            }
+        }
+    }
+
+    box.addView(
+        usarButton,
+        LinearLayout.LayoutParams(-1, dp(44))
+    )
+
+    return box
+}
+
 
     
 private fun showPage(name: String) {
