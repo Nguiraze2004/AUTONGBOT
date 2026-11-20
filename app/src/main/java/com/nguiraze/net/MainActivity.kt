@@ -825,11 +825,13 @@ private fun showPage(name: String) {
 
         // BOTAO DESPACHAR
         
+
 val dispatchButton = android.widget.Button(this).apply {
     text = "➤  Despachar para um Agente"
     textSize = 13f
     isAllCaps = false
     setTextColor(white)
+
     background = android.graphics.drawable.GradientDrawable().apply {
         setColor(Color.rgb(15, 22, 32))
         cornerRadius = dp(18).toFloat()
@@ -842,17 +844,17 @@ val dispatchButton = android.widget.Button(this).apply {
         val quantidade = megas.toIntOrNull()
 
         if (numero.isEmpty() || megas.isEmpty()) {
-            android.widget.Toast.makeText(
+            Toast.makeText(
                 this@MainActivity,
                 "Preencha o número e os megabytes.",
-                android.widget.Toast.LENGTH_SHORT
+                Toast.LENGTH_SHORT
             ).show()
 
         } else if (quantidade == null || quantidade !in 100..10240) {
-            android.widget.Toast.makeText(
+            Toast.makeText(
                 this@MainActivity,
                 "A quantidade deve estar entre 100 MB e 10 GB.",
-                android.widget.Toast.LENGTH_SHORT
+                Toast.LENGTH_SHORT
             ).show()
 
         } else {
@@ -871,16 +873,11 @@ val dispatchButton = android.widget.Button(this).apply {
                 )
             )
 
-            android.widget.Toast.makeText(
-                this@MainActivity,
-                "Pedido adicionado à fila de espera!",
-                android.widget.Toast.LENGTH_SHORT
-            ).show()
-
-            showPage("Fila")
+            despacharProximoPedido()
         }
     }
 }
+
 
 manualBox.addView(
     dispatchButton,
