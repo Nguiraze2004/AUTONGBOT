@@ -102,6 +102,7 @@ class MainActivity : Activity() {
     private lateinit var content: LinearLayout
     private lateinit var navigation: LinearLayout
     private var paused = true
+    private var selectedSimSubscriptionId: Int = -1
 
     private val transferencias = mutableListOf<Transferencia>()
     private val pedidosFila = mutableListOf<Pedido>()
