@@ -1784,77 +1784,6 @@ if (pedidosFila.isEmpty()) {
                 LinearLayout.LayoutParams(0, -2, 1f)
             )
 
-            val editarButton = Button(this).apply {
-                text = "✎"
-                isAllCaps = false
-                setTextColor(white)
-                setOnClickListener {
-                    val campo = EditText(this@MainActivity).apply {
-                        hint = "Saldo em GB"
-                        inputType = android.text.InputType.TYPE_CLASS_NUMBER or
-                            android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
-                    }
-
-                    android.app.AlertDialog.Builder(this@MainActivity)
-                        .setTitle("Editar saldo SIM ${sim.simSlotIndex + 1}")
-                        .setView(campo)
-                        .setPositiveButton("GUARDAR", null)
-                        .setNegativeButton("CANCELAR", null)
-                        .show()
-                }
-            }
-
-            saldoRow.addView(editarButton)
-
-            val atualizarGB = Button(this).apply {
-                text = "↻ ACTUALIZAR GB"
-                isAllCaps = false
-                setTextColor(white)
-                setOnClickListener {
-                    Toast.makeText(
-                        this@MainActivity,
-                        "Consulta *100# será implementada para este SIM.",
-                        Toast.LENGTH_LONG
-                    ).show()
-                }
-            }
-
-            mbBox.addView(saldoRow)
-
-            mbBox.addView(
-                label("Saldo de megas · Ainda não consultado", 11f, gray)
-            )
-
-            mbBox.addView(
-                atualizarGB,
-                LinearLayout.LayoutParams(-1, dp(42))
-            )
-
-            simBox.addView(mbBox)
-
-            addPanel(simBox)
-            space(12)
-        }
-    }
-
-    val infoBox = panel(12)
-
-    infoBox.addView(
-        label("INFORMAÇÃO", 13f, yellow, true)
-    )
-
-    infoBox.addView(
-        label(
-            "O contador só aumenta após confirmação de sucesso da operadora.",
-            11f,
-            gray
-        )
-    )
-
-    addPanel(infoBox)
-
-} else {
-
 
     space(25)
     content.addView(label("NGUIRAZE NET", 21f, red, true))
@@ -1876,7 +1805,6 @@ if (pedidosFila.isEmpty()) {
     )
 
     addPanel(box)
-}
 }
 
 
