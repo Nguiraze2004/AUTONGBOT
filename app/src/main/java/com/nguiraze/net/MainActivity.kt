@@ -1360,6 +1360,8 @@ if (pedidosFila.isEmpty()) {
 
     tituloRow.addView(definicoesButton)
     content.addView(tituloRow)
+space(12)
+    content.addView(tituloRow)
     space(12)
 
     val subscriptionManager =
