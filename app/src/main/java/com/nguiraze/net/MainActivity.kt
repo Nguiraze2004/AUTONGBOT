@@ -50,31 +50,44 @@ class MainActivity : Activity() {
         return "Permissão para consultar SIM não concedida."
     }
 
-    val subscriptionManager =
-        getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE)
-            as SubscriptionManager
+    return try {
 
-    val cartoes = subscriptionManager.activeSubscriptionInfoList
-        ?: return "Nenhum cartão SIM detectado."
+        val subscriptionManager =
+            getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE)
+                as SubscriptionManager
 
-    val resultado = StringBuilder()
+        val cartoes = subscriptionManager.activeSubscriptionInfoList
 
-    cartoes.forEach { sim ->
+        if (cartoes.isNullOrEmpty()) {
+            return "O Android não disponibilizou nenhum SIM ativo."
+        }
 
-        resultado.append(
-            "SIM ${sim.simSlotIndex + 1}\n"
-        )
+        val resultado = StringBuilder()
 
-        resultado.append(
-            "Operadora: ${sim.carrierName}\n"
-        )
+        resultado.append("Total de SIMs detectados: ${cartoes.size}\n\n")
 
-        resultado.append(
-            "ID da subscrição: ${sim.subscriptionId}\n\n"
-        )
+        cartoes.sortedBy { it.simSlotIndex }.forEach { sim ->
+
+            val operadora = sim.carrierName
+                ?.toString()
+                ?.takeIf { it.isNotBlank() }
+                ?: "Desconhecida"
+
+            resultado.append("SIM ${sim.simSlotIndex + 1}\n")
+            resultado.append("Operadora: $operadora\n")
+            resultado.append("ID da subscrição: ${sim.subscriptionId}\n\n")
+        }
+
+        resultado.toString()
+
+    } catch (e: SecurityException) {
+
+        "O Android bloqueou o acesso aos cartões SIM."
+
+    } catch (e: Exception) {
+
+        "Erro ao consultar SIMs: ${e.message}"
     }
-
-    return resultado.toString()
     }
 
     private val bg = Color.rgb(5, 8, 14)
