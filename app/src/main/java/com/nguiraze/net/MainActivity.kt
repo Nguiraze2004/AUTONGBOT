@@ -130,6 +130,55 @@ class MainActivity : Activity() {
     }
 
     private fun dp(v: Int): Int =
+    
+private fun abrirUSSDManual() {
+
+    val subscriptionManager =
+        getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE)
+            as SubscriptionManager
+
+    val cartoes = try {
+        subscriptionManager.activeSubscriptionInfoList
+    } catch (e: Exception) {
+        null
+    }
+
+    val simSelecionado = cartoes?.firstOrNull {
+        it.subscriptionId == selectedSimSubscriptionId
+    }
+
+    if (simSelecionado == null) {
+        Toast.makeText(
+            this,
+            "Selecione primeiro um SIM ativo.",
+            Toast.LENGTH_LONG
+        ).show()
+        return
+    }
+
+    try {
+        val intent = android.content.Intent(
+            android.content.Intent.ACTION_DIAL,
+            android.net.Uri.fromParts("tel", "*162#", null)
+        )
+
+        Toast.makeText(
+            this,
+            "Prepare o USSD pelo SIM ${simSelecionado.simSlotIndex + 1}.",
+            Toast.LENGTH_LONG
+        ).show()
+
+        startActivity(intent)
+
+    } catch (e: Exception) {
+        Toast.makeText(
+            this,
+            "Não foi possível abrir o discador.",
+            Toast.LENGTH_LONG
+        ).show()
+    }
+}
+
         (v * resources.displayMetrics.density).toInt()
 
     override fun onCreate(savedInstanceState: Bundle?) {
