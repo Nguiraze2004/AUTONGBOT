@@ -401,18 +401,17 @@ class MainActivity : Activity() {
     // FILA
     // --------------------------------------------------
 
-    private fun mostrarFila() {
-        titulo(content, "Painel da Fila", "Gestão de pedidos e executores")
-
-        val pesquisa = EditText(this).apply {
-            hint = "Pesquisar número..."
-            setHintTextColor(cinza)
-            setTextColor(branco)
-            textSize = 14f
-            singleLine = true
-            setPadding(dp(14), dp(12), dp(14), dp(12))
-            background = fundoArredondado(cartao, 13, Color.rgb(40, 48, 62))
-        }
+    val pesquisa = EditText(this).apply {
+    hint = "Pesquisar número..."
+    setHintTextColor(cinza)
+    setTextColor(branco)
+    textSize = 14f
+    maxLines = 1
+    inputType = InputType.TYPE_CLASS_TEXT
+    setSingleLine(true)
+    setPadding(dp(14), dp(12), dp(14), dp(12))
+    background = fundoArredondado(cartao, 13, Color.rgb(40, 48, 62))
+    }
 
         content.addView(
             pesquisa,
