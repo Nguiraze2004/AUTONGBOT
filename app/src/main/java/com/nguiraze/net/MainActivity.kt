@@ -398,8 +398,11 @@ class MainActivity : Activity() {
     }
 
     // --------------------------------------------------
-    // FILA
-    // --------------------------------------------------
+// FILA
+// --------------------------------------------------
+
+private fun mostrarFila() {
+    titulo(content, "Painel da Fila", "Gestão de pedidos e executores")
 
     val pesquisa = EditText(this).apply {
     hint = "Pesquisar número..."
