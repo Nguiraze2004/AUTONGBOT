@@ -9,32 +9,109 @@ import android.graphics.RectF
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.text.InputType
 import android.text.Spannable
 import android.text.SpannableString
 import android.text.style.ForegroundColorSpan
 import android.view.Gravity
 import android.view.View
+import android.widget.Button
+import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import android.widget.Toast
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
+// =========================================================================
+// 1. MODELOS DE DADOS
+// =========================================================================
+data class PedidoFila(
+    val id: String,
+    val numeroCliente: String,
+    val megas: Int,
+    val hora: String
+)
+
+data class TransacaoConcluida(
+    val numeroCliente: String,
+    val megas: Int,
+    val valorMT: Int,
+    val hora: String,
+    val simInfo: String,
+    val status: String // "Entregue", "Falhou", "Incerto"
+)
+
+data class AgenteExecutor(
+    val id: Int,
+    val nome: String,
+    val sigla: String,
+    var online: Boolean,
+    var vendas: Int,
+    val simTag: String
+)
+
+// =========================================================================
+// 2. ACTIVITY PRINCIPAL (NGUIRAZE NET - TEMA AZUL CIANO)
+// =========================================================================
 class MainActivity : Activity() {
 
-    private val bgTop = Color.rgb(5, 16, 42)
-    private val bgBot = Color.rgb(4, 24, 68)
-    private val cardBlue = Color.rgb(7, 34, 88)
-    private val cardBorder = Color.rgb(20, 75, 165)
+    // Paleta de Cores (Dark Navy & Cyan)
+    private val bgTop = Color.rgb(5, 14, 34)
+    private val bgBot = Color.rgb(4, 20, 52)
+    private val cardNavy = Color.rgb(9, 28, 66)
+    private val cardDark = Color.rgb(10, 22, 46)
+    private val borderBlue = Color.rgb(24, 72, 148)
     private val cyan = Color.rgb(0, 215, 255)
     private val green = Color.rgb(0, 220, 125)
+    private val greenBg = Color.rgb(12, 54, 48)
+    private val yellow = Color.rgb(255, 193, 7)
+    private val red = Color.rgb(240, 75, 85)
     private val white = Color.WHITE
-    private val lightBlue = Color.rgb(160, 195, 240)
+    private val lightBlue = Color.rgb(155, 185, 225)
 
-    private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
+    private lateinit var content: LinearLayout
+    private lateinit var navBar: LinearLayout
+    private var abaAtual = "Início"
+
+    // Estado Operacional
+    private var filaPausada = false
+    private var gbVendidosHoje = 1980.0
+    private var metaGb = 1000
+    private var saldoHojeMT = 0
+    private var simSelecionado = 2
+    private var sim1Usados = 0
+    private var sim2Usados = 0
+    private val limiteSim = 10
+
+    // Dados em Memória
+    private var pedidoEmCurso: PedidoFila? = PedidoFila("0", "847337160", 10240, "14:39")
+
+    private val filaEspera = mutableListOf(
+        PedidoFila("1", "856942180", 1000, "14:40"),
+        PedidoFila("2", "842910482", 500, "14:41")
+    )
+
+    private val executores = mutableListOf(
+        AgenteExecutor(1, "Este aparelho", "ES", true, 4, "SIM 2 · Vodacom"),
+        AgenteExecutor(2, "Agente 2", "AG", false, 0, "SIM 1 · Movitel")
+    )
+
+    private val concluidos = mutableListOf(
+        TransacaoConcluida("847337160", 10240, 150, "23:24", "SIM 2 (Vodacom)", "Entregue"),
+        TransacaoConcluida("853767234", 10240, 150, "23:17", "SIM 1 (Movitel)", "Entregue"),
+        TransacaoConcluida("850387303", 10240, 150, "23:09", "SIM 2 (Vodacom)", "Entregue"),
+        TransacaoConcluida("843119024", 5120, 75, "22:45", "SIM 1 (Vodacom)", "Falhou")
+    )
+
+    private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.statusBarColor = bgTop
-        window.navigationBarColor = bgBot
+        window.navigationBarColor = Color.rgb(6, 16, 40)
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -44,186 +121,129 @@ class MainActivity : Activity() {
             )
         }
 
-        val body = LinearLayout(this).apply {
+        val scroll = ScrollView(this).apply { clipToPadding = false }
+        content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(20), dp(16), dp(24))
+            setPadding(dp(14), dp(14), dp(14), dp(24))
         }
+        scroll.addView(content)
+        root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
 
-        // 1. Cabeçalho (Ícone + Título bicolor + Badge Online)
+        navBar = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            setBackgroundColor(Color.rgb(6, 16, 40))
+            setPadding(dp(4), dp(6), dp(4), dp(6))
+        }
+        root.addView(navBar, LinearLayout.LayoutParams(-1, dp(64)))
+
+        setContentView(root)
+        navegarPara("Início")
+    }
+
+    private fun navegarPara(aba: String) {
+        abaAtual = aba
+        renderizarBarraInferior()
+        content.removeAllViews()
+
+        when (aba) {
+            "Início" -> telaInicio()
+            "Fila" -> telaFilaExecutores()
+            "Concluídos" -> telaConcluidos()
+            "SIMs" -> telaSims()
+            "Config" -> telaConfig()
+        }
+    }
+
+    // =====================================================================
+    // TELA 1: INÍCIO (DASHBOARD PRINCIPAL)
+    // =====================================================================
+    private fun telaInicio() {
+        // Cabeçalho com Robô + Título + Online
         val header = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
 
-            val avatar = txt("🤖", 20f, white).apply {
+            val avatar = txt("🤖", 19f, white).apply {
                 gravity = Gravity.CENTER
-                background = GradientDrawable().apply {
-                    shape = GradientDrawable.OVAL
-                    setColor(Color.rgb(12, 45, 105))
-                    setStroke(dp(1), cyan)
-                }
+                background = oval(Color.rgb(12, 42, 95), cyan)
             }
-            addView(avatar, LinearLayout.LayoutParams(dp(44), dp(44)))
+            addView(avatar, LinearLayout.LayoutParams(dp(42), dp(42)))
 
             val titleCol = LinearLayout(this@MainActivity).apply {
                 orientation = LinearLayout.VERTICAL
                 setPadding(dp(10), 0, 0, 0)
-                val titulo = SpannableString("NGUIRAZE NET").apply {
+                val sp = SpannableString("NGUIRAZE NET").apply {
                     setSpan(ForegroundColorSpan(cyan), 9, 12, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
                 }
                 addView(TextView(this@MainActivity).apply {
-                    text = titulo; textSize = 16f; setTextColor(white); setTypeface(null, Typeface.BOLD)
+                    text = sp; textSize = 16f; setTextColor(white); setTypeface(null, Typeface.BOLD)
                 })
                 addView(txt("Versão instalada: 1.86 (86)", 11f, lightBlue))
             }
             addView(titleCol, LinearLayout.LayoutParams(0, -2, 1f))
 
-            val onlineBadge = txt("● Online", 11f, green, true).apply {
-                setPadding(dp(12), dp(5), dp(12), dp(5))
-                background = GradientDrawable().apply {
-                    setColor(Color.rgb(10, 52, 58))
-                    cornerRadius = dp(20).toFloat()
-                    setStroke(dp(1), Color.rgb(18, 110, 95))
-                }
-            }
-            addView(onlineBadge)
+            addView(pillBadge("● Online", green, greenBg, Color.rgb(18, 110, 95)))
         }
-        body.addView(header)
+        content.addView(header)
 
-        // Tag "icone de megas"
-        body.addView(txt("  icone de megas", 11f, lightBlue).apply {
-            setPadding(dp(12), dp(5), dp(14), dp(5))
-            layoutParams = LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(10); bottomMargin = dp(14) }
-            background = GradientDrawable().apply {
-                setColor(Color.rgb(10, 42, 102))
-                cornerRadius = dp(20).toFloat()
-            }
+        // Tag icone de megas
+        content.addView(pillBadge("icone de megas", lightBlue, Color.rgb(10, 38, 92), borderBlue).apply {
+            layoutParams = LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(8); bottomMargin = dp(12) }
         })
 
-        // 2. Cartão Central (Anel Ciano + Meta do Dia)
-        val mainCard = LinearLayout(this).apply {
+        // Cartão Principal: Anel GB Vendidos + Resumo de Transferências
+        val summaryCard = cardBox(cardNavy, borderBlue).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(14), dp(18), dp(14), dp(18))
-            layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(18) }
-            background = GradientDrawable().apply {
-                setColor(cardBlue); cornerRadius = dp(18).toFloat(); setStroke(dp(1), cardBorder)
-            }
 
-            addView(CyanRingView(this@MainActivity), LinearLayout.LayoutParams(dp(145), dp(145)))
+            val gbStr = String.format(Locale("pt", "MZ"), "%.2f", gbVendidosHoje)
+            addView(RingProgressView(this@MainActivity, 0.78f, gbStr, "GB vendidos"), LinearLayout.LayoutParams(dp(140), dp(140)))
 
-            val metaCol = LinearLayout(this@MainActivity).apply {
+            val rightStats = LinearLayout(this@MainActivity).apply {
                 orientation = LinearLayout.VERTICAL
                 setPadding(dp(14), 0, 0, 0)
-                addView(txt("Meta do dia", 12f, lightBlue))
-                addView(txt("1000 GB", 18f, white, true).apply { setPadding(0, 0, 0, dp(10)) })
-                addView(txt("Saldo vendido hoje", 12f, lightBlue))
-                addView(txt("0 MT", 17f, white, true))
+                val totalConcluidas = concluidos.count { it.status == "Entregue" } + 37
+                addView(txt("$totalConcluidas", 28f, white, true))
+                addView(txt("transferências", 13f, white))
+                addView(txt("Concluídos hoje", 12f, green, true).apply { setPadding(0, 0, 0, dp(10)) })
+                addView(txt("Meta: $metaGb GB", 12f, lightBlue))
+                addView(txt("Saldo hoje: $saldoHojeMT MT", 12f, white, true))
             }
-            addView(metaCol, LinearLayout.LayoutParams(0, -2, 1f))
+            addView(rightStats, LinearLayout.LayoutParams(0, -2, 1f))
         }
-        body.addView(mainCard)
+        content.addView(summaryCard)
 
-        // 3. Linha dos 4 Botões Circulares
-        val actionsRow = LinearLayout(this).apply {
+        // Linha dos 4 Ícones: Enviar megas | Fila | Histórico | Meta
+        val iconsRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(20) }
+            layoutParams = LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6); bottomMargin = dp(16) }
         }
-        listOf("➤" to "Enviar megas", "☰" to "Fila", "▤" to "Histórico", "◉" to "Meta").forEach { (ico, nome) ->
-            val item = LinearLayout(this).apply {
+        val atalhos = listOf(
+            Triple("➤", "Enviar megas") { navegarPara("Fila") },
+            Triple("☰", "Fila") { navegarPara("Fila") },
+            Triple("▤", "Histórico") { navegarPara("Concluídos") },
+            Triple("◉", "Meta") { Toast.makeText(this, "Meta atual: $metaGb GB", Toast.LENGTH_SHORT).show() }
+        )
+        atalhos.forEach { (ico, nome, acao) ->
+            val col = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
-                val circle = txt(ico, 18f, white, true).apply {
+                val circle = txt(ico, 17f, white, true).apply {
                     gravity = Gravity.CENTER
-                    background = GradientDrawable().apply {
-                        shape = GradientDrawable.OVAL
-                        setColor(Color.rgb(14, 68, 175))
-                        setStroke(dp(1), Color.rgb(45, 135, 255))
-                    }
+                    background = oval(Color.rgb(14, 65, 165), Color.rgb(45, 135, 255))
                 }
-                addView(circle, LinearLayout.LayoutParams(dp(54), dp(54)))
-                addView(txt(nome, 11f, white, true).apply {
-                    gravity = Gravity.CENTER; setPadding(0, dp(6), 0, 0)
-                })
+                addView(circle, LinearLayout.LayoutParams(dp(52), dp(52)))
+                addView(txt(nome, 11f, white, true).apply { gravity = Gravity.CENTER; setPadding(0, dp(5), 0, 0) })
+                setOnClickListener { acao() }
             }
-            actionsRow.addView(item, LinearLayout.LayoutParams(0, -2, 1f))
+            iconsRow.addView(col, LinearLayout.LayoutParams(0, -2, 1f))
         }
-        body.addView(actionsRow)
+        content.addView(iconsRow)
 
-        // 4. Título "Últimos pedidos" + Lista
-        body.addView(txt("Últimos pedidos", 16f, white, true).apply { setPadding(0, 0, 0, dp(10)) })
-
-        listOf(
-            Triple("847337160", "Megas · 23:24", "10240 MB"),
-            Triple("853767234", "Megas · 23:17", "10240 MB"),
-            Triple("850387303", "Megas · 23:09", "10240 MB")
-        ).forEach { (num, hora, mb) ->
-            val row = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
-                setPadding(dp(12), dp(12), dp(12), dp(12))
-                layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) }
-                background = GradientDrawable().apply {
-                    setColor(Color.rgb(6, 32, 84)); cornerRadius = dp(14).toFloat(); setStroke(dp(1), cardBorder)
-                }
-
-                val check = txt("✓", 15f, green, true).apply {
-                    gravity = Gravity.CENTER
-                    background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.rgb(12, 65, 75)) }
-                }
-                addView(check, LinearLayout.LayoutParams(dp(38), dp(38)))
-
-                val mid = LinearLayout(this@MainActivity).apply {
-                    orientation = LinearLayout.VERTICAL; setPadding(dp(12), 0, 0, 0)
-                    addView(txt(num, 15f, white, true))
-                    addView(txt(hora, 12f, lightBlue))
-                }
-                addView(mid, LinearLayout.LayoutParams(0, -2, 1f))
-
-                val right = LinearLayout(this@MainActivity).apply {
-                    orientation = LinearLayout.VERTICAL; gravity = Gravity.END
-                    addView(txt(mb, 14f, cyan, true))
-                    addView(txt("Concluído", 10f, green, true).apply {
-                        setPadding(dp(8), dp(2), dp(8), dp(2))
-                        background = GradientDrawable().apply { setColor(Color.rgb(12, 65, 75)); cornerRadius = dp(10).toFloat() }
-                    })
-                }
-                addView(right)
-            }
-            body.addView(row)
-        }
-
-        root.addView(ScrollView(this).apply { addView(body) })
-        setContentView(root)
-    }
-
-    // Anel circular brilhante "1980,00 GB hoje"
-    private inner class CyanRingView(ctx: Context) : View(ctx) {
-        private val pBg = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.STROKE; strokeWidth = dp(9).toFloat(); color = Color.rgb(14, 55, 130)
-        }
-        private val pFg = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.STROKE; strokeWidth = dp(9).toFloat(); strokeCap = Paint.Cap.ROUND; color = cyan
-        }
-        private val pBig = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = white; textSize = dp(20).toFloat(); typeface = Typeface.DEFAULT_BOLD; textAlign = Paint.Align.CENTER
-        }
-        private val pSub = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = lightBlue; textSize = dp(11).toFloat(); textAlign = Paint.Align.CENTER
-        }
-
-        override fun onDraw(c: Canvas) {
-            val s = width.coerceAtMost(height).toFloat()
-            val pad = dp(12).toFloat()
-            val rect = RectF(pad, pad, s - pad, s - pad)
-            c.drawArc(rect, 0f, 360f, false, pBg)
-            c.drawArc(rect, -90f, 285f, false, pFg)
-            c.drawText("1980,00", s / 2f, s / 2f + dp(2), pBig)
-            c.drawText("GB hoje", s / 2f, s / 2f + dp(18), pSub)
-        }
-    }
-
-    private fun txt(t: String, s: Float, c: Int, b: Boolean = false) = TextView(this).apply {
-        text = t; textSize = s; setTextColor(c)
-if (b) setTypeface(null, Typeface.BOLD)
-}
-}
+        // Cabeçalho CARTÕES SIM + Botão + Gerir SIMs
+        val simHeader = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) }
+            addView(txt("CARTÕES SIM", 13f, lightBlue, true), LinearLayout.LayoutParams(0, -2, 1f))
