@@ -74,12 +74,13 @@ private val lightBlue = Color.rgb(155, 185, 225)
 
 private lateinit var content: LinearLayout  
 private lateinit var navBar: LinearLayout  
-private var abaAtual = "Início"  
+private var abaAtual = "Início"
+private var filtroConclusao = "Todos"
 
 // Estado Operacional  
 private var filaPausada = false  
 private var gbVendidosHoje = 1980.0  
-private var metaGb = 1000  
+private var metaGb = 100  
 private var saldoHojeMT = 0  
 private var simSelecionado = 2  
 private var sim1Usados = 0  
@@ -347,7 +348,7 @@ addView(txt("Despacha direto para o primeiro Agente livre · 100MB - 10GB", 11f,
 setPadding(0, dp(2), 0, dp(10))
 })
 val inputNumero = EditText(this@MainActivity).apply {
-hint = "Número do cliente (ex: 847337160)"
+hint = "Número do cliente (ex: 84xxxxxxx)"
 setText("847337160")
 inputType = InputType.TYPE_CLASS_PHONE
 setTextColor(white)
@@ -357,7 +358,7 @@ setPadding(dp(12), dp(10), dp(12), dp(10))
 background = roundRect(Color.rgb(6, 18, 42), borderBlue, 10)
 }
 val inputMegas = EditText(this@MainActivity).apply {
-hint = "Megabytes (ex: 10240)"
+hint = "Megabytes (ex: 100)"
 setText("10240")
 inputType = InputType.TYPE_CLASS_NUMBER
 setTextColor(white)
