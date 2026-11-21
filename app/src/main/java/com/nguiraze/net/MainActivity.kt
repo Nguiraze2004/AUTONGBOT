@@ -593,6 +593,19 @@ marginStart = dp(2); marginEnd = dp(2)
 }
 private fun buildTransacaoRow(item: TransacaoConcluida): LinearLayout {
 val ok = item.status == "Entregue"
+val incerto = item.status == "Incerto"
+
+val corEstado = when {
+    ok -> green
+    incerto -> yellow
+    else -> red
+}
+
+val fundoEstado = when {
+    ok -> greenBg
+    incerto -> Color.rgb(55, 43, 12)
+    else -> Color.rgb(65, 18, 26)
+}
 return cardBox(cardDark, borderBlue).apply {
 orientation = LinearLayout.HORIZONTAL
 gravity = Gravity.CENTER_VERTICAL
