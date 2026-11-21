@@ -1331,7 +1331,7 @@ class MainActivity : Activity() {
     ): EditText {
         return EditText(this).apply {
             hint = hintText
-            hintTextColor = lightBlue
+            setHintTextColor(lightBlue)
             setTextColor(white)
             textSize = 13f
             this.inputType = inputType
