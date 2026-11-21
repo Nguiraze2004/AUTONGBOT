@@ -513,29 +513,145 @@ content.addView(pRow)
 // =====================================================================
 // TELA 3: CONCLUÍDOS
 // =====================================================================
+
 private fun telaConcluidos() {
-content.addView(txt("Pedidos Concluídos", 19f, white, true))
-content.addView(txt("Histórico de transferências efetuadas", 12f, lightBlue).apply { setPadding(0, 0, 0, dp(12)) })
-val summary = cardBox(cardNavy, borderBlue).apply {
-orientation = LinearLayout.HORIZONTAL
-val c1 = LinearLayout(this@MainActivity).apply {
-orientation = LinearLayout.VERTICAL
-addView(txt("1980,00 GB", 20f, white, true))
-addView(txt("Entregues hoje", 11f, cyan))
+
+    content.addView(txt("Conclusão", 19f, white, true))
+
+    content.addView(
+        txt("Histórico de transferências", 12f, lightBlue).apply {
+            setPadding(0, 0, 0, dp(14))
+        }
+    )
+
+    // FILTROS
+    val filtros = listOf("Todos", "Entregue", "Falhou", "Incerto", "Em fila")
+
+    val filtrosRow = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+    }
+
+    filtros.forEach { filtro ->
+
+        val selecionado = filtroConclusao == filtro
+
+        val btn = TextView(this).apply {
+            text = filtro
+            textSize = 10f
+            setTypeface(null, Typeface.BOLD)
+            gravity = Gravity.CENTER
+            setTextColor(if (selecionado) cyan else lightBlue)
+
+            background = roundRect(
+                if (selecionado) Color.rgb(8, 38, 68) else cardDark,
+                if (selecionado) cyan else borderBlue,
+                12
+            )
+
+            setOnClickListener {
+                filtroConclusao = filtro
+                navegarPara("Concluídos")
+            }
+        }
+
+        filtrosRow.addView(
+            btn,
+            LinearLayout.LayoutParams(0, dp(44), 1f).apply {
+                if (filtro != "Todos") leftMargin = dp(3)
+                if (filtro != "Em fila") rightMargin = dp(3)
+            }
+        )
+    }
+
+    content.addView(
+        filtrosRow,
+        LinearLayout.LayoutParams(-1, -2).apply {
+            bottomMargin = dp(16)
+        }
+    )
+
+    // SELECIONAR REGISTOS
+    val listaConcluidos = when (filtroConclusao) {
+        "Entregue" -> concluidos.filter { it.status == "Entregue" }
+        "Falhou" -> concluidos.filter { it.status == "Falhou" }
+        "Incerto" -> concluidos.filter { it.status == "Incerto" }
+        else -> concluidos
+    }
+
+    val mostrarFila = filtroConclusao == "Todos" ||
+                      filtroConclusao == "Em fila"
+
+    val total = listaConcluidos.size +
+            if (mostrarFila) filaEspera.size else 0
+
+    content.addView(
+        txt("$total REGISTOS", 12f, cyan, true).apply {
+            setPadding(0, 0, 0, dp(10))
+        }
+    )
+
+    // REGISTOS CONCLUÍDOS
+    listaConcluidos.forEach { item ->
+        content.addView(buildTransacaoRow(item))
+    }
+
+    // PEDIDOS NA FILA
+    if (mostrarFila) {
+        filaEspera.forEach { pedido ->
+
+            val linha = cardBox(cardDark, borderBlue).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+
+                val info = LinearLayout(this@MainActivity).apply {
+                    orientation = LinearLayout.VERTICAL
+
+                    addView(
+                        txt(pedido.numeroCliente, 15f, white, true)
+                    )
+
+                    addView(
+                        txt(
+                            "${pedido.megas} MB · ${pedido.hora}",
+                            11f,
+                            lightBlue
+                        )
+                    )
+                }
+
+                addView(info, LinearLayout.LayoutParams(0, -2, 1f))
+
+                addView(
+                    pillBadge(
+                        "Em fila",
+                        yellow,
+                        Color.rgb(55, 43, 12),
+                        yellow
+                    )
+                )
+            }
+
+            content.addView(linha)
+        }
+    }
+
+    // ESTADO VAZIO: SEM ÍCONE
+    if (total == 0) {
+
+        content.addView(
+            cardBox(cardDark, borderBlue).apply {
+                addView(
+                    txt(
+                        "Não existem registos nesta categoria.",
+                        13f,
+                        lightBlue
+                    )
+                )
+            }
+        )
+    }
 }
-val c2 = LinearLayout(this@MainActivity).apply {
-orientation = LinearLayout.VERTICAL
-addView(txt("40 Envios", 20f, white, true))
-addView(txt("12.500 MT faturados", 11f, green))
-}
-addView(c1, LinearLayout.LayoutParams(0, -2, 1f))
-addView(c2, LinearLayout.LayoutParams(0, -2, 1f))
-}
-content.addView(summary)
-concluidos.forEach { item ->
-content.addView(buildTransacaoRow(item))
-}
-}
+
 // =====================================================================
 // TELA 4: GESTÃO DE SIMs
 // =====================================================================
