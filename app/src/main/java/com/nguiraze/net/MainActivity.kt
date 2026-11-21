@@ -1,18 +1,15 @@
-
 package com.nguiraze.net
 
 import android.app.Activity
+import android.app.AlertDialog
 import android.os.Bundle
 import android.graphics.Color
 import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.view.View
 import android.widget.*
-import android.content.Context
-import android.telephony.SubscriptionManager
-import android.telephony.TelephonyManager
-import android.Manifest
-import android.content.pm.PackageManager
+import android.text.InputType
 
 data class Transferencia(
     val numeroCliente: String,
@@ -30,2025 +27,1061 @@ data class Pedido(
     val estado: String
 )
 
-
 data class Executor(
     val nome: String,
     var estado: String,
     var vendasConcluidas: Int = 0,
-    var totalMBEnviados: Long = 0,
+    var totalMBEnviados: Int = 0,
     var enviosEmCurso: Int = 0,
     var falhas: Int = 0
 )
 
 class MainActivity : Activity() {
-    private fun consultarCartoesSIM(): String {
 
-    if (
-        checkSelfPermission(Manifest.permission.READ_PHONE_STATE)
-        != PackageManager.PERMISSION_GRANTED
-    ) {
-        return "Permissão para consultar SIM não concedida."
-    }
+    private val fundo = Color.rgb(5, 8, 14)
+    private val cartao = Color.rgb(14, 19, 28)
+    private val cartao2 = Color.rgb(20, 26, 37)
+    private val branco = Color.WHITE
+    private val cinza = Color.rgb(145, 153, 168)
+    private val vermelho = Color.rgb(230, 10, 35)
+    private val verde = Color.rgb(40, 200, 125)
+    private val azul = Color.rgb(55, 135, 240)
+    private val amarelo = Color.rgb(245, 185, 55)
 
-    return try {
-
-        val subscriptionManager =
-            getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE)
-                as SubscriptionManager
-
-        val cartoes = subscriptionManager.activeSubscriptionInfoList
-
-        if (cartoes.isNullOrEmpty()) {
-            return "O Android não disponibilizou nenhum SIM ativo."
-        }
-
-        val resultado = StringBuilder()
-
-        resultado.append("Total de SIMs detectados: ${cartoes.size}\n\n")
-
-        cartoes.sortedBy { it.simSlotIndex }.forEach { sim ->
-
-            val operadora = sim.carrierName
-                ?.toString()
-                ?.takeIf { it.isNotBlank() }
-                ?: "Desconhecida"
-
-            resultado.append("SIM ${sim.simSlotIndex + 1}\n")
-            resultado.append("Operadora: $operadora\n")
-            resultado.append("ID da subscrição: ${sim.subscriptionId}\n\n")
-        }
-
-        resultado.toString()
-
-    } catch (e: SecurityException) {
-
-        "O Android bloqueou o acesso aos cartões SIM."
-
-    } catch (e: Exception) {
-
-        "Erro ao consultar SIMs: ${e.message}"
-    }
-    }
-
-    private val bg = Color.rgb(5, 8, 14)
-    private val card = Color.rgb(14, 19, 28)
-    private val white = Color.WHITE
-    private val gray = Color.rgb(155, 165, 180)
-    private val red = Color.rgb(230, 10, 35)
-    private val green = Color.rgb(40, 200, 125)
-    private val blue = Color.rgb(45, 135, 255)
-    private val yellow = Color.rgb(240, 180, 50)
-
+    private lateinit var raiz: LinearLayout
     private lateinit var content: LinearLayout
     private lateinit var navigation: LinearLayout
-    private var paused = true
-    private var selectedSimSubscriptionId: Int = -1
+
+    private var paginaAtual = "Início"
+    private var filtroConclusao = "TODOS"
 
     private val transferencias = mutableListOf<Transferencia>()
     private val pedidosFila = mutableListOf<Pedido>()
+
     private val executores = mutableListOf(
-    Executor("EXECUTOR 1", "OFFLINE"),
-    Executor("EXECUTOR 2", "OFFLINE")
-)
-
-    private fun registarTransferencia(
-        numero: String,
-        mb: Int,
-        executor: String,
-        dataHora: String,
-        estado: String
-    ) {
-        transferencias.add(
-            Transferencia(
-                numeroCliente = numero,
-                quantidadeMB = mb,
-                executor = executor,
-                dataHora = dataHora,
-                estado = estado
-            )
-        )
-    }
-
-
-private fun despacharProximoPedido() {
-
-    if (pedidosFila.isEmpty()) return
-
-    val agenteLivre = executores.firstOrNull {
-        it.estado == "LIVRE"
-    }
-
-    if (agenteLivre == null) {
-        Toast.makeText(
-            this,
-            "Nenhum executor disponível. Pedido mantido na fila.",
-            Toast.LENGTH_LONG
-        ).show()
-
-        showPage("Fila")
-        return
-    }
-
-    if (selectedSimSubscriptionId == -1) {
-        Toast.makeText(
-            this,
-            "Selecione primeiro um SIM.",
-            Toast.LENGTH_LONG
-        ).show()
-        return
-    }
-
-    val pedido = pedidosFila.removeAt(0)
-
-    agenteLivre.estado = "OCUPADO"
-    agenteLivre.enviosEmCurso++
-
-    registarTransferencia(
-        pedido.numeroCliente,
-        pedido.quantidadeMB,
-        agenteLivre.nome,
-        pedido.dataHora,
-        "Em processamento"
+        Executor("Executor 01", "OFFLINE"),
+        Executor("Executor 02", "OFFLINE")
     )
 
-    Toast.makeText(
-        this,
-        "${agenteLivre.nome} recebeu o pedido.",
-        Toast.LENGTH_SHORT
-    ).show()
+    private fun dp(valor: Int): Int =
+        (valor * resources.displayMetrics.density).toInt()
 
-    showPage("Fila")
-    abrirUSSDManual()
-}
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
 
-private fun dp(v: Int): Int =
-    (v * resources.displayMetrics.density).toInt()
+        window.statusBarColor = fundo
+        window.navigationBarColor = fundo
 
-private fun abrirUSSDManual() {
-    val subscriptionManager =
-        getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE)
-            as SubscriptionManager
-
-    val cartoes = try {
-        subscriptionManager.activeSubscriptionInfoList
-    } catch (e: Exception) {
-        null
-    }
-
-    val simSelecionado = cartoes?.firstOrNull {
-        it.subscriptionId == selectedSimSubscriptionId
-    }
-
-    if (simSelecionado == null) {
-        Toast.makeText(
-            this,
-            "Selecione primeiro um SIM ativo.",
-            Toast.LENGTH_LONG
-        ).show()
-        return
-    }
-
-    try {
-        val intent = android.content.Intent(
-            android.content.Intent.ACTION_DIAL,
-            android.net.Uri.fromParts("tel", "*162#", null)
-        )
-
-        Toast.makeText(
-            this,
-            "Prepare o USSD pelo SIM ${simSelecionado.simSlotIndex + 1}.",
-            Toast.LENGTH_LONG
-        ).show()
-
-        startActivity(intent)
-    } catch (e: Exception) {
-        Toast.makeText(
-            this,
-            "Não foi possível abrir o discador.",
-            Toast.LENGTH_LONG
-        ).show()
-    }
-}
-
-override fun onCreate(savedInstanceState: Bundle?) {
-    super.onCreate(savedInstanceState)
-
-
-        window.statusBarColor = Color.BLACK
-        window.navigationBarColor = Color.BLACK
-        window.decorView.systemUiVisibility =
-    View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-
-        val root = LinearLayout(this).apply {
+        raiz = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(bg)
+            setBackgroundColor(fundo)
         }
 
         val scroll = ScrollView(this).apply {
-            clipToPadding = false
+            isFillViewport = true
+            overScrollMode = View.OVER_SCROLL_NEVER
         }
 
         content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(14), dp(24), dp(14), dp(20))
+            setPadding(dp(16), dp(16), dp(16), dp(24))
         }
 
         scroll.addView(content)
 
-        root.addView(scroll, LinearLayout.LayoutParams(
-            -1, 0, 1f
-        ))
+        navigation = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            setBackgroundColor(Color.rgb(10, 14, 22))
+            setPadding(dp(4), dp(9), dp(4), dp(9))
+        }
 
-        
-navigation = LinearLayout(this).apply {
-    orientation = LinearLayout.HORIZONTAL
-    gravity = Gravity.CENTER
-    setBackgroundColor(Color.rgb(10, 14, 22))
-    setPadding(dp(5), dp(7), dp(5), dp(7))
-}
+        raiz.addView(
+            scroll,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                0,
+                1f
+            )
+        )
 
-// BOTÃO SIMs
-val simsButton = Button(this).apply {
-    text = "📱 SIMs"
-    textSize = 12f
-    isAllCaps = false
-    setTextColor(white)
-    setBackgroundColor(Color.TRANSPARENT)
+        raiz.addView(
+            navigation,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                dp(68)
+            )
+        )
 
-    setOnClickListener {
-        showPage("SIMs")
+        setContentView(raiz)
+        mostrarPagina("Início")
     }
-}
 
-navigation.addView(
-    simsButton,
-    LinearLayout.LayoutParams(0, -1, 1f)
-)
-
-root.addView(
-    navigation,
-    LinearLayout.LayoutParams(-1, dp(65))
-)
-
-root.setOnApplyWindowInsetsListener { _, insets ->
-
-
-    val bottomInset = insets.systemWindowInsetBottom
-
-    navigation.setPadding(
-        dp(5),
-        dp(7),
-        dp(5),
-        dp(7) + bottomInset
-    )
-
-    val params = navigation.layoutParams
-    params.height = dp(65) + bottomInset
-    navigation.layoutParams = params
-
-    insets
-}
-
-setContentView(root)
-root.requestApplyInsets()
-
-        showHome()
-        updateNavigation("Início")
-        if (
-    checkSelfPermission(Manifest.permission.READ_PHONE_STATE)
-    != PackageManager.PERMISSION_GRANTED
-) {
-    requestPermissions(
-        arrayOf(Manifest.permission.READ_PHONE_STATE),
-        101
-    )
-} else {
-    Toast.makeText(
-        this,
-        consultarCartoesSIM(),
-        Toast.LENGTH_LONG
-    ).show()
+    private fun corEstado(estado: String): Int {
+        return when (estado.uppercase()) {
+            "CONCLUÍDO", "CONCLUIDO", "LIVRE", "ONLINE" -> verde
+            "ERRO", "FALHOU", "BLOQUEADO" -> vermelho
+            "INCERTO", "EM ESPERA", "AGUARDANDO" -> amarelo
+            "EM CURSO", "OCUPADO", "PROCESSANDO" -> azul
+            else -> cinza
         }
     }
 
-override fun onRequestPermissionsResult(
-    requestCode: Int,
-    permissions: Array<out String>,
-    grantResults: IntArray
-) {
-    super.onRequestPermissionsResult(
-        requestCode,
-        permissions,
-        grantResults
-    )
-
-    if (requestCode == 101) {
-        if (
-            grantResults.isNotEmpty() &&
-            grantResults[0] == PackageManager.PERMISSION_GRANTED
-        ) {
-            Toast.makeText(
-                this,
-                consultarCartoesSIM(),
-                Toast.LENGTH_LONG
-            ).show()
-        } else {
-            Toast.makeText(
-                this,
-                "Permissão para consultar os SIMs não concedida.",
-                Toast.LENGTH_LONG
-            ).show()
+    private fun fundoArredondado(
+        cor: Int,
+        raio: Int = 16,
+        borda: Int = Color.TRANSPARENT
+    ): GradientDrawable {
+        return GradientDrawable().apply {
+            setColor(cor)
+            cornerRadius = dp(raio).toFloat()
+            if (borda != Color.TRANSPARENT) {
+                setStroke(dp(1), borda)
+            }
         }
     }
-}
 
-    private fun label(
-        value: String,
-        size: Float = 14f,
-        color: Int = white,
-        bold: Boolean = false
+    private fun texto(
+        valor: String,
+        tamanho: Float = 14f,
+        cor: Int = branco,
+        negrito: Boolean = false
     ): TextView {
         return TextView(this).apply {
-            text = value
-            textSize = size
-            setTextColor(color)
-            if (bold) setTypeface(null, Typeface.BOLD)
+            text = valor
+            textSize = tamanho
+            setTextColor(cor)
+            if (negrito) {
+                setTypeface(null, Typeface.BOLD)
+            }
         }
     }
 
-    private fun space(height: Int) {
-        content.addView(View(this), LinearLayout.LayoutParams(
-            1, dp(height)
-        ))
+    private fun espaco(
+        pai: LinearLayout,
+        altura: Int = 12
+    ) {
+        pai.addView(
+            View(this),
+            LinearLayout.LayoutParams(
+                1,
+                dp(altura)
+            )
+        )
     }
 
-    private fun section(value: String) {
-        val t = label(value, 12f, gray, true)
-        t.setPadding(dp(3), dp(15), dp(3), dp(8))
-        content.addView(t)
-    }
-
-    private fun panel(
-        padding: Int = 14,
-        color: Int = card
+    private fun painel(
+        pai: LinearLayout,
+        padding: Int = 14
     ): LinearLayout {
-        return LinearLayout(this).apply {
+        val caixa = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(padding), dp(padding), dp(padding), dp(padding))
-            background = android.graphics.drawable.GradientDrawable().apply {
-    setColor(color)
-    cornerRadius = dp(18).toFloat()
-    setStroke(dp(1), Color.rgb(32, 40, 52))
-            }
+            background = fundoArredondado(cartao, 17, Color.rgb(35, 43, 57))
         }
+
+        pai.addView(
+            caixa,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                bottomMargin = dp(12)
+            }
+        )
+
+        return caixa
     }
 
-    private fun addPanel(view: View, bottom: Int = 9) {
-        content.addView(view, LinearLayout.LayoutParams(
-            -1, -2
-        ).apply {
-            bottomMargin = dp(bottom)
-        })
-    }
-
-    private fun horizontal(vararg views: View): LinearLayout {
-        return LinearLayout(this).apply {
+    private fun linha(
+        pai: LinearLayout,
+        esquerda: View,
+        direita: View
+    ) {
+        val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            views.forEach {
-                addView(it, LinearLayout.LayoutParams(
-                    0, -2, 1f
-                ).apply {
-                    marginEnd = dp(5)
-                    marginStart = dp(5)
-                })
-            }
         }
+
+        row.addView(
+            esquerda,
+            LinearLayout.LayoutParams(0, -2, 1f)
+        )
+
+        row.addView(
+            direita,
+            LinearLayout.LayoutParams(-2, -2)
+        )
+
+        pai.addView(
+            row,
+            LinearLayout.LayoutParams(-1, -2)
+        )
     }
 
-    private fun showHome() {
+    private fun botao(
+        pai: LinearLayout,
+        nome: String,
+        cor: Int = cartao2,
+        acao: (() -> Unit)? = null
+    ) {
+        val b = TextView(this).apply {
+            text = nome
+            textSize = 13f
+            gravity = Gravity.CENTER
+            setTextColor(branco)
+            setPadding(dp(14), dp(11), dp(14), dp(11))
+            background = fundoArredondado(cor, 12)
+            if (acao != null) {
+                setOnClickListener { acao() }
+            }
+        }
+
+        pai.addView(
+            b,
+            LinearLayout.LayoutParams(-2, -2).apply {
+                rightMargin = dp(7)
+                bottomMargin = dp(5)
+            }
+        )
+    }
+
+    private fun titulo(
+        pai: LinearLayout,
+        nome: String,
+        descricao: String = ""
+    ) {
+        pai.addView(
+            texto(nome, 21f, branco, true)
+        )
+
+        if (descricao.isNotEmpty()) {
+            espaco(pai, 4)
+            pai.addView(texto(descricao, 12f, cinza))
+        }
+
+        espaco(pai, 17)
+    }
+
+    private fun mostrarPagina(nome: String) {
+        paginaAtual = nome
         content.removeAllViews()
 
-        // CABEÇALHO
-        val header = LinearLayout(this).apply {
+        when (nome) {
+            "Início" -> mostrarInicio()
+            "Fila" -> mostrarFila()
+            "Conclusão" -> mostrarConclusao()
+            "Pagamentos" -> mostrarPagamentos()
+            "Config" -> mostrarConfiguracoes()
+            "SIMs" -> mostrarSIMs()
+            "Diagnóstico" -> mostrarDiagnostico()
+        }
+
+        atualizarNavegacao()
+    }
+
+    // --------------------------------------------------
+    // INÍCIO
+    // --------------------------------------------------
+
+    private fun mostrarInicio() {
+        val cabecalho = painel(content, 18)
+        cabecalho.background = fundoArredondado(vermelho, 17)
+
+        cabecalho.addView(
+            texto("NGUIRAZE NET", 23f, branco, true)
+        )
+
+        espaco(cabecalho, 5)
+        cabecalho.addView(
+            texto("PAINEL DE CONTROLO • 24/24H", 12f, branco)
+        )
+
+        espaco(content, 2)
+
+        val estado = painel(content)
+
+        estado.addView(texto("ESTADO DO SISTEMA", 12f, cinza, true))
+        espaco(estado, 10)
+
+        linha(
+            estado,
+            texto("Automação", 15f, branco, true),
+            texto("ESTRUTURA VISUAL", 11f, amarelo, true)
+        )
+
+        espaco(estado, 8)
+        estado.addView(
+            texto(
+                "As funções automáticas serão ligadas na próxima fase.",
+                12f,
+                cinza
+            )
+        )
+
+        val atalhos = painel(content)
+        atalhos.addView(texto("ACESSO RÁPIDO", 14f, branco, true))
+        espaco(atalhos, 12)
+
+        val row1 = LinearLayout(this)
+        row1.orientation = LinearLayout.HORIZONTAL
+
+        botao(row1, "📋 Fila") { mostrarPagina("Fila") }
+        botao(row1, "✅ Conclusão") { mostrarPagina("Conclusão") }
+
+        atalhos.addView(row1)
+
+        val row2 = LinearLayout(this)
+        row2.orientation = LinearLayout.HORIZONTAL
+
+        botao(row2, "📱 SIMs") { mostrarPagina("SIMs") }
+        botao(row2, "💳 Pagamentos") { mostrarPagina("Pagamentos") }
+
+        atalhos.addView(row2)
+
+        val resumo = painel(content)
+        resumo.addView(texto("RESUMO DO DIA", 14f, branco, true))
+        espaco(resumo, 12)
+
+        indicador(resumo, "Transferências concluídas", "0", verde)
+        indicador(resumo, "Transferências em curso", "0", azul)
+        indicador(resumo, "Pedidos em espera", pedidosFila.size.toString(), amarelo)
+        indicador(resumo, "Erros registados", "0", vermelho)
+
+        val sim = painel(content)
+        sim.addView(texto("CARTÕES SIM", 14f, branco, true))
+        espaco(sim, 8)
+
+        sim.addView(
+            texto("Configuração e controlo dos cartões SIM.", 12f, cinza)
+        )
+
+        espaco(sim, 10)
+        botao(sim, "GERIR SIMs", vermelho) {
+            mostrarPagina("SIMs")
+        }
+
+        val diagnostico = painel(content)
+        diagnostico.addView(texto("DIAGNÓSTICO USSD", 14f, branco, true))
+        espaco(diagnostico, 7)
+        diagnostico.addView(
+            texto("Consultar as leituras recolhidas pelo serviço de acessibilidade.", 12f, cinza)
+        )
+        espaco(diagnostico, 8)
+        botao(diagnostico, "ABRIR DIAGNÓSTICO", cartao2) {
+            mostrarPagina("Diagnóstico")
+        }
+    }
+
+    private fun indicador(
+        pai: LinearLayout,
+        nome: String,
+        valor: String,
+        cor: Int
+    ) {
+        val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(16), dp(16), dp(16), dp(16))
-            setBackgroundColor(red)
         }
 
-        header.addView(label("⚙", 25f, white, true))
-
-        val brand = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            addView(label("NGUIRAZE NET", 20f, white, true))
-            addView(label("● Sistema em preparação", 11f, white))
-        }
-
-        header.addView(brand, LinearLayout.LayoutParams(
-            0, -2, 1f
-        ).apply { marginStart = dp(12) })
-
-        header.addView(label("24H", 16f, white, true))
-        addPanel(header, 12)
-
-        // CONTROLO DA FILA
-        val pauseCard = panel(12, Color.rgb(45, 10, 19))
-        pauseCard.addView(label(
-            if (paused) "FILA PAUSADA" else "FILA PREPARADA",
-            13f, red, true
-        ))
-        pauseCard.addView(label(
-            if (paused) "Pausada manualmente." else "Aguardando configuração.",
-            11f, white
-        ))
-
-        val pauseButton = Button(this).apply {
-            text = if (paused) "RETOMAR FILA" else "PAUSAR FILA"
-            setTextColor(white)
-            setBackgroundColor(red)
-            setOnClickListener {
-                paused = !paused
-                showHome()
-                updateNavigation("Início")
-            }
-        }
-
-        pauseCard.addView(pauseButton, LinearLayout.LayoutParams(
-            -1, dp(46)
-        ).apply { topMargin = dp(8) })
-
-        addPanel(pauseCard, 9)
-
-        // BOT
-        val bot = panel()
-        bot.addView(label("🤖  BOT", 17f, green, true))
-        bot.addView(label("Aguardando configuração", 12f, gray))
-        addPanel(bot)
-
-        // AUTOMAÇÃO
-        val automation = panel()
-        automation.addView(label(
-            "⚙  Serviço de automação", 15f, white, true
-        ))
-        automation.addView(label(
-            "Acessibilidade ainda não configurada",
-            12f, gray
-        ))
-        addPanel(automation)
-
-        // ATALHOS
-        section("ATALHOS")
-
-        shortcutRow(
-            listOf(
-                "▥\nResumo" to green,
-                "♙\nSIMs" to red,
-                "◉\nCredencial" to blue,
-                "ⓢ\nCrédito" to yellow
-            )
+        row.addView(
+            texto("●  $nome", 13f, cinza),
+            LinearLayout.LayoutParams(0, -2, 1f)
         )
 
-        shortcutRow(
-            listOf(
-                "⚙\nAvançado" to yellow,
-                "➤\nSMS" to green,
-                "⌛\nAgendar" to yellow
-            )
+        row.addView(
+            texto(valor, 17f, cor, true)
         )
 
-        // USSD
-        val ussd = panel()
-        ussd.addView(label("▶  Velocidade do USSD", 14f, white, true))
-        ussd.addView(label("Modo: Automático • Por configurar", 11f, gray))
-        addPanel(ussd)
-
-        // ESTATÍSTICAS
-        section("RESUMO DAS TRANSFERÊNCIAS")
-
-        addPanel(horizontal(
-            statistic("☰", "Na fila", "0", red),
-            statistic("✓", "Concluídas", "0", green)
-        ))
-
-        // META
-        section("META DIÁRIA")
-
-        val goal = panel()
-        goal.addView(label("🎯  Meta de hoje", 14f, white, true))
-        goal.addView(label("0 MT • 0% concluído", 12f, gray))
-        goal.addView(label("Meta ainda não configurada", 11f, gray))
-        addPanel(goal)
-
-        // ÚLTIMA VENDA
-        section("ÚLTIMA VENDA")
-
-        val sale = panel()
-        sale.addView(label("Nenhuma venda registada", 13f, gray))
-        addPanel(sale)
-
-        // VENDAS POR HORA
-        section("VENDAS POR HORA (HOJE)")
-
-        val chart = panel()
-        chart.addView(label(
-            "Ainda não existem vendas registadas.",
-            12f, gray
-        ))
-        chart.addView(label(
-            "0 vendas • Faturação: 0 MT",
-            12f, green
-        ))
-        addPanel(chart)
-
-        // SIM
-        section("CARTÕES SIM")
-
-        addPanel(horizontal(
-            simCard("SIM 1"),
-            simCard("SIM 2")
-        ))
-
-        // FILA DE ESPERA
-        section("FILA DE ESPERA")
-
-        val queue = panel()
-        queue.addView(label("◉  Sem pedidos na fila", 13f, gray))
-        addPanel(queue)
-
-        // EQUIPA
-        section("EQUIPA")
-
-        val team = panel()
-        team.addView(label("Área de equipa", 13f, gray))
-        addPanel(team)
+        pai.addView(row)
+        espaco(pai, 10)
     }
 
-    
-private fun shortcutRow(items: List<Pair<String, Int>>) {
-    val row = LinearLayout(this).apply {
-        orientation = LinearLayout.HORIZONTAL
-    }
+    // --------------------------------------------------
+    // FILA
+    // --------------------------------------------------
 
-    items.forEach { item ->
-        val tile = TextView(this).apply {
-            text = item.first
-            textSize = 12f
-            gravity = Gravity.CENTER
-            setTextColor(item.second)
-            setTypeface(null, Typeface.BOLD)
-            setPadding(dp(2), dp(10), dp(2), dp(10))
+    private fun mostrarFila() {
+        titulo(content, "Painel da Fila", "Gestão de pedidos e executores")
 
-            background = android.graphics.drawable.GradientDrawable().apply {
-                setColor(card)
-                cornerRadius = dp(16).toFloat()
-                setStroke(dp(1), Color.rgb(32, 40, 52))
-            }
-
-            setOnClickListener {
-                if (item.first.contains("Resumo")) {
-                    showPage("Resumo")
-                }
-            }
-        }
-
-        row.addView(tile, LinearLayout.LayoutParams(
-            0, dp(65), 1f
-        ).apply {
-            marginStart = dp(3)
-            marginEnd = dp(3)
-            bottomMargin = dp(7)
-        })
-    }
-
-    content.addView(row)
-}
-
-    private fun statistic(
-        icon: String,
-        name: String,
-        number: String,
-        color: Int
-    ): LinearLayout {
-        val box = panel()
-        box.addView(label("$icon  $name", 12f, color, true))
-        box.addView(label(number, 25f, white, true))
-        return box
-    }
-
-    
-private fun simCard(name: String): LinearLayout {
-
-    val slot = if (name.endsWith("1")) 0 else 1
-
-    val subscriptionManager =
-        getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE)
-            as SubscriptionManager
-
-    val cartoes = try {
-        subscriptionManager.activeSubscriptionInfoList
-    } catch (e: Exception) {
-        null
-    }
-
-    val sim = cartoes?.firstOrNull {
-        it.simSlotIndex == slot
-    }
-
-    val selecionado = sim != null &&
-        sim.subscriptionId == selectedSimSubscriptionId
-
-    val box = panel(14)
-
-    val fundo = android.graphics.drawable.GradientDrawable().apply {
-        setColor(
-            if (selecionado) Color.rgb(8, 28, 20)
-            else Color.rgb(10, 14, 22)
-        )
-        cornerRadius = dp(22).toFloat()
-        setStroke(
-            dp(if (selecionado) 2 else 1),
-            if (selecionado) green else Color.rgb(40, 50, 65)
-        )
-    }
-
-    box.background = fundo
-    box.setPadding(dp(14), dp(14), dp(14), dp(14))
-
-    val cabecalho = LinearLayout(this).apply {
-        orientation = LinearLayout.HORIZONTAL
-        gravity = Gravity.CENTER_VERTICAL
-    }
-
-    cabecalho.addView(
-        label(name, 17f, if (selecionado) green else white, true),
-        LinearLayout.LayoutParams(0, -2, 1f)
-    )
-
-    if (selecionado) {
-        cabecalho.addView(
-            label("●", 19f, green, true)
-        )
-    }
-
-    box.addView(cabecalho)
-    space(8)
-
-    box.addView(
-        label("0 / 10", 30f, white, true)
-    )
-
-    box.addView(
-        label("Transferências", 13f, gray)
-    )
-
-    space(8)
-
-    box.addView(
-        label("Limite diário: 10", 12f, gray)
-    )
-
-    space(12)
-
-    val usarButton = Button(this).apply {
-        text = if (selecionado) "✓ SELECIONADO" else "USAR"
-        textSize = 12f
-        isAllCaps = false
-        setTextColor(white)
-
-        setOnClickListener {
-            if (sim == null) {
-                Toast.makeText(
-                    this@MainActivity,
-                    "Este SIM não está ativo.",
-                    Toast.LENGTH_SHORT
-                ).show()
-            } else {
-                selectedSimSubscriptionId = sim.subscriptionId
-
-                Toast.makeText(
-                    this@MainActivity,
-                    "$name selecionado!",
-                    Toast.LENGTH_SHORT
-                ).show()
-
-                showPage("Início")
-            }
-        }
-    }
-
-    box.addView(
-        usarButton,
-        LinearLayout.LayoutParams(-1, dp(44))
-    )
-
-    return box
-}
-
-
-    
-private fun showPage(name: String) {
-    content.removeAllViews()
-
-    if (name == "Fila") {
-
-        space(20)
-        content.addView(label("NGUIRAZE NET", 21f, red, true))
-        space(18)
-
-        // PAINEL DO EXECUTOR
-        val executorBox = panel(18)
-
-        executorBox.addView(
-            label("PAINEL DO EXECUTOR", 17f, white, true)
-        )
-        space(12)
-
-        executorBox.addView(
-            label("Executor 1", 15f, white, true)
-        )
-        executorBox.addView(
-            label("Executor 2", 15f, white, true)
-        )
-
-        addPanel(executorBox)
-        space(14)
-
-        // PESQUISA
-        val searchBox = panel(14)
-
-        val search = android.widget.EditText(this).apply {
-            hint = "Pesquisar número ou executor..."
-            setHintTextColor(gray)
-            setTextColor(white)
+        val pesquisa = EditText(this).apply {
+            hint = "Pesquisar número..."
+            setHintTextColor(cinza)
+            setTextColor(branco)
             textSize = 14f
-            maxLines = 1
-            setPadding(dp(12), dp(12), dp(12), dp(12))
-            background = android.graphics.drawable.GradientDrawable().apply {
-                setColor(Color.rgb(20, 27, 38))
-                cornerRadius = dp(12).toFloat()
-                setStroke(dp(1), Color.rgb(45, 55, 70))
-            }
+            singleLine = true
+            setPadding(dp(14), dp(12), dp(14), dp(12))
+            background = fundoArredondado(cartao, 13, Color.rgb(40, 48, 62))
         }
 
-        searchBox.addView(
-            search,
-            LinearLayout.LayoutParams(
-                -1,
-                dp(52)
-            )
-        )
-
-        addPanel(searchBox)
-        
-        space(10)
-
-        // INDICADORES EM UMA ÚNICA FILA
-
-        val statusRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-        }
-
-        fun statusCard(title: String, color: Int): LinearLayout {
-            val card = panel(8)
-            card.gravity = android.view.Gravity.CENTER
-
-            card.addView(label("0", 20f, color, true))
-            card.addView(label(title, 10f, gray))
-
-            return card
-        }
-
-        val statusParams = LinearLayout.LayoutParams(
-            0, dp(86), 1f
-        ).apply {
-            setMargins(dp(3), 0, dp(3), 0)
-        }
-
-        statusRow.addView(statusCard("Online", green), statusParams)
-        statusRow.addView(statusCard("Em curso", blue), statusParams)
-        statusRow.addView(statusCard("Em espera", yellow), statusParams)
-        statusRow.addView(statusCard("Bloqueados", red), statusParams)
-
-        content.addView(statusRow)
-        
-        space(18)
-
-        // TITULO ENVIO MANUAL
         content.addView(
-            label("➤  ENVIO MANUAL", 14f, white, true)
-        )
-        space(10)
-
-        // CARTAO ENVIO MANUAL
-        val manualBox = panel(14)
-        fun innerSpace(height: Int) {
-    manualBox.addView(
-        View(this),
-        LinearLayout.LayoutParams(1, dp(height))
-    )
-        }
-
-        manualBox.addView(
-            label("➤  Envio manual", 16f, white, true)
+            pesquisa,
+            LinearLayout.LayoutParams(-1, dp(48)).apply {
+                bottomMargin = dp(14)
+            }
         )
 
-        manualBox.addView(
-            label(
-                "Despacha diretamente para um Agente livre",
-                12f, gray
-            )
+        val estados = painel(content)
+        estados.addView(texto("ESTADO GERAL", 13f, branco, true))
+        espaco(estados, 12)
+
+        indicador(
+            estados,
+            "Online",
+            executores.count { it.estado == "LIVRE" }.toString(),
+            verde
         )
 
-        innerSpace(18)
-
-        manualBox.addView(
-            label("PACOTES RÁPIDOS", 12f, gray, true)
+        indicador(
+            estados,
+            "Em curso",
+            executores.sumOf { it.enviosEmCurso }.toString(),
+            azul
         )
 
-        innerSpace(8)
+        indicador(
+            estados,
+            "Em espera",
+            pedidosFila.size.toString(),
+            amarelo
+        )
 
-        // CAMPOS DE ENTRADA
-        val numberInput = android.widget.EditText(this).apply {
+        indicador(
+            estados,
+            "Bloqueados",
+            executores.count { it.estado == "BLOQUEADO" }.toString(),
+            vermelho
+        )
+
+        val manual = painel(content)
+        manual.addView(texto("ENVIO MANUAL", 15f, branco, true))
+        espaco(manual, 5)
+        manual.addView(texto("Adicionar um pedido à fila.", 12f, cinza))
+        espaco(manual, 12)
+
+        val numero = EditText(this).apply {
             hint = "Número do cliente"
-            setHintTextColor(gray)
-            setTextColor(white)
-            textSize = 14f
-            inputType = android.text.InputType.TYPE_CLASS_PHONE
-            setPadding(dp(14), dp(12), dp(14), dp(12))
-            background = android.graphics.drawable.GradientDrawable().apply {
-                setColor(Color.rgb(5, 5, 5))
-                cornerRadius = dp(14).toFloat()
-                setStroke(dp(1), Color.rgb(35, 42, 54))
-            }
+            inputType = InputType.TYPE_CLASS_PHONE
+            setTextColor(branco)
+            setHintTextColor(cinza)
+            background = fundoArredondado(cartao2, 12)
+            setPadding(dp(12), dp(12), dp(12), dp(12))
         }
 
-        val mbInput = android.widget.EditText(this).apply {
-            hint = "Megabytes"
-            setHintTextColor(gray)
-            setTextColor(white)
-            textSize = 14f
-            inputType = android.text.InputType.TYPE_CLASS_NUMBER
-            setPadding(dp(14), dp(12), dp(14), dp(12))
-            background = android.graphics.drawable.GradientDrawable().apply {
-                setColor(Color.rgb(5, 5, 5))
-                cornerRadius = dp(14).toFloat()
-                setStroke(dp(1), Color.rgb(35, 42, 54))
-            }
-        }
-
-        // PACOTE RAPIDO
-        val quickRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = android.view.Gravity.CENTER_VERTICAL
-        }
-
-        val quickPackage = android.widget.Button(this).apply {
-            text = "450MB  ·  10 MT"
-            textSize = 12f
-            isAllCaps = false
-            setTextColor(white)
-            background = android.graphics.drawable.GradientDrawable().apply {
-                setColor(Color.BLACK)
-                cornerRadius = dp(24).toFloat()
-                setStroke(dp(1), Color.rgb(45, 55, 70))
-            }
-            setOnClickListener {
-                mbInput.setText("450")
-            }
-        }
-
-        quickRow.addView(quickPackage)
-        manualBox.addView(quickRow)
-
-        innerSpace(12)
-
-        // NUMERO DO CLIENTE
-        manualBox.addView(
-            numberInput,
-            LinearLayout.LayoutParams(-1, dp(50))
+        manual.addView(
+            numero,
+            LinearLayout.LayoutParams(-1, dp(48))
         )
 
-        innerSpace(10)
+        espaco(manual, 9)
 
-        // QUANTIDADE DE MB
-        manualBox.addView(
-            mbInput,
-            LinearLayout.LayoutParams(-1, dp(50))
-        )
-
-        innerSpace(8)
-
-        manualBox.addView(
-            label("Aceite entre 100MB e 10240MB (10GB).", 11f, gray)
-        )
-
-        innerSpace(14)
-
-        // BOTAO DESPACHAR
-        
-
-val dispatchButton = android.widget.Button(this).apply {
-    text = "➤  Despachar para um Agente"
-    textSize = 13f
-    isAllCaps = false
-    setTextColor(white)
-
-    background = android.graphics.drawable.GradientDrawable().apply {
-        setColor(Color.rgb(15, 22, 32))
-        cornerRadius = dp(18).toFloat()
-        setStroke(dp(1), Color.rgb(40, 50, 65))
-    }
-
-    setOnClickListener {
-        val numero = numberInput.text.toString().trim()
-        val megas = mbInput.text.toString().trim()
-        val quantidade = megas.toIntOrNull()
-
-        if (numero.isEmpty() || megas.isEmpty()) {
-            Toast.makeText(
-                this@MainActivity,
-                "Preencha o número e os megabytes.",
-                Toast.LENGTH_SHORT
-            ).show()
-
-        } else if (quantidade == null || quantidade !in 100..10240) {
-            Toast.makeText(
-                this@MainActivity,
-                "A quantidade deve estar entre 100 MB e 10 GB.",
-                Toast.LENGTH_SHORT
-            ).show()
-
-        } else {
-            val dataHora = android.text.format.DateFormat.format(
-                "dd/MM/yyyy HH:mm",
-                java.util.Date()
-            ).toString()
-
-            pedidosFila.add(
-                Pedido(
-                    numeroCliente = numero,
-                    quantidadeMB = quantidade,
-                    executor = "Por atribuir",
-                    dataHora = dataHora,
-                    estado = "Em fila"
-                )
-            )
-
-            despacharProximoPedido()
-        }
-    }
-}
-
-
-manualBox.addView(
-    dispatchButton,
-    LinearLayout.LayoutParams(-1, dp(50))
-)
-
-
-        addPanel(manualBox)
-                space(20)
-
-        
-content.addView(
-    label("➤  EXECUTORES", 14f, white, true)
-)
-
-space(10)
-
-val addExecutorButton = Button(this).apply {
-    text = "＋  ADICIONAR EXECUTOR"
-    textSize = 13f
-    isAllCaps = false
-    setTextColor(white)
-
-    background = android.graphics.drawable.GradientDrawable().apply {
-        setColor(Color.rgb(15, 22, 32))
-        cornerRadius = dp(14).toFloat()
-        setStroke(dp(1), red)
-    }
-
-    setOnClickListener {
-
-        val proximoNumero = executores.size + 1
-
-        val nomeInput = EditText(this@MainActivity).apply {
-            setText("EXECUTOR $proximoNumero")
-            setSingleLine(true)
-            setTextColor(white)
-            hint = "Nome do executor"
+        val mb = EditText(this).apply {
+            hint = "Quantidade de MB"
+            inputType = InputType.TYPE_CLASS_NUMBER
+            setTextColor(branco)
+            setHintTextColor(cinza)
+            background = fundoArredondado(cartao2, 12)
+            setPadding(dp(12), dp(12), dp(12), dp(12))
         }
 
-        android.app.AlertDialog.Builder(this@MainActivity)
-            .setTitle("NOVO EXECUTOR")
-            .setMessage("Digite o nome do executor:")
-            .setView(nomeInput)
-            .setNegativeButton("CANCELAR", null)
-            .setPositiveButton("ADICIONAR") { _, _ ->
+        manual.addView(
+            mb,
+            LinearLayout.LayoutParams(-1, dp(48))
+        )
 
-                val nome = nomeInput.text.toString().trim()
+        espaco(manual, 12)
 
-                if (nome.isEmpty()) {
-                    Toast.makeText(
-                        this@MainActivity,
-                        "Digite o nome do executor.",
-                        Toast.LENGTH_SHORT
-                    ).show()
+        botao(manual, "＋  ADICIONAR À FILA", vermelho) {
+            val n = numero.text.toString().trim()
+            val quantidade = mb.text.toString().toIntOrNull()
 
-                } else if (executores.any {
-                    it.nome.equals(nome, ignoreCase = true)
-                }) {
-                    Toast.makeText(
-                        this@MainActivity,
-                        "Este executor já existe.",
-                        Toast.LENGTH_SHORT
-                    ).show()
-
-                } else {
-                    executores.add(
-                        Executor(nome, "OFFLINE")
+            if (n.length < 9) {
+                Toast.makeText(this, "Verifica o número do cliente.", Toast.LENGTH_SHORT).show()
+            } else if (quantidade == null || quantidade < 100 || quantidade > 10240) {
+                Toast.makeText(this, "Indica uma quantidade entre 100 e 10240 MB.", Toast.LENGTH_SHORT).show()
+            } else {
+                pedidosFila.add(
+                    Pedido(
+                        n,
+                        quantidade,
+                        "Por atribuir",
+                        "--",
+                        "EM FILA"
                     )
+                )
 
-                    showPage("Fila")
+                Toast.makeText(
+                    this,
+                    "Pedido adicionado à fila.",
+                    Toast.LENGTH_SHORT
+                ).show()
+
+                mostrarPagina("Fila")
+            }
+        }
+
+        val equipa = painel(content)
+        linha(
+            equipa,
+            texto("EXECUTORES", 14f, branco, true),
+            texto("${executores.size} registados", 11f, cinza)
+        )
+
+        espaco(equipa, 12)
+
+        executores.forEachIndexed { index, executor ->
+            cartaoExecutor(equipa, executor, index)
+        }
+
+        botao(equipa, "＋ ADICIONAR EXECUTOR", cartao2) {
+            adicionarExecutor()
+        }
+
+        val curso = painel(content)
+        curso.addView(texto("EM CURSO AGORA", 14f, branco, true))
+        espaco(curso, 10)
+
+        val emCurso = transferencias.filter {
+            it.estado == "EM CURSO"
+        }
+
+        if (emCurso.isEmpty()) {
+            curso.addView(texto("Nenhuma transferência em curso.", 12f, cinza))
+        } else {
+            emCurso.forEach {
+                cartaoTransferencia(curso, it)
+            }
+        }
+
+        val fila = painel(content)
+        fila.addView(texto("FILA DE ESPERA", 14f, branco, true))
+        espaco(fila, 10)
+
+        if (pedidosFila.isEmpty()) {
+            fila.addView(texto("Não existem pedidos em espera.", 12f, cinza))
+        } else {
+            pedidosFila.forEach {
+                fila.addView(
+                    texto(
+                        "${it.numeroCliente}  •  ${it.quantidadeMB} MB",
+                        13f,
+                        branco,
+                        true
+                    )
+                )
+                fila.addView(texto(it.estado, 11f, amarelo))
+                espaco(fila, 9)
+            }
+        }
+    }
+
+    private fun cartaoExecutor(
+        pai: LinearLayout,
+        executor: Executor,
+        index: Int
+    ) {
+        val caixa = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(12), dp(12), dp(12), dp(12))
+            background = fundoArredondado(cartao2, 13)
+        }
+
+        pai.addView(
+            caixa,
+            LinearLayout.LayoutParams(-1, -2).apply {
+                bottomMargin = dp(9)
+            }
+        )
+
+        linha(
+            caixa,
+            texto(executor.nome, 14f, branco, true),
+            texto(executor.estado, 11f, corEstado(executor.estado), true)
+        )
+
+        espaco(caixa, 8)
+
+        caixa.addView(
+            texto(
+                "Concluídos: ${executor.vendasConcluidas}   •   Falhas: ${executor.falhas}",
+                11f,
+                cinza
+            )
+        )
+
+        espaco(caixa, 8)
+
+        botao(caixa, "ALTERAR ESTADO", cartao) {
+            val opcoes = arrayOf("LIVRE", "OFFLINE", "BLOQUEADO")
+
+            AlertDialog.Builder(this)
+                .setTitle("Estado do executor")
+                .setItems(opcoes) { _, escolha ->
+                    executor.estado = opcoes[escolha]
+                    mostrarPagina("Fila")
+                }
+                .show()
+        }
+    }
+
+    private fun adicionarExecutor() {
+        val campo = EditText(this)
+        campo.hint = "Nome do executor"
+
+        AlertDialog.Builder(this)
+            .setTitle("Novo executor")
+            .setView(campo)
+            .setNegativeButton("Cancelar", null)
+            .setPositiveButton("Adicionar") { _, _ ->
+                val nome = campo.text.toString().trim()
+
+                if (nome.isNotEmpty()) {
+                    executores.add(Executor(nome, "OFFLINE"))
+                    mostrarPagina("Fila")
                 }
             }
             .show()
     }
-}
 
-content.addView(
-    addExecutorButton,
-    LinearLayout.LayoutParams(-1, dp(50))
-)
+    // --------------------------------------------------
+    // CONCLUSÃO
+    // --------------------------------------------------
 
-space(12)
+    private fun mostrarConclusao() {
+        val cabecalho = painel(content, 18)
+        cabecalho.background = fundoArredondado(vermelho, 17)
 
+        cabecalho.addView(
+            texto("PAINEL DE CONCLUSÃO", 21f, branco, true)
+        )
 
-val executorsContainer = LinearLayout(this).apply {
-    orientation = LinearLayout.VERTICAL
-}
+        espaco(cabecalho, 5)
 
-executores.forEach { executor ->
+        cabecalho.addView(
+            texto("Acompanhamento das transferências", 12f, branco)
+        )
 
-    val executorBox = panel(18)
+        espaco(content, 4)
 
-    val estadoCor = when (executor.estado) {
-        "LIVRE" -> green
-        "OCUPADO" -> yellow
-        else -> gray
-    }
-
-    val header = LinearLayout(this).apply {
-        orientation = LinearLayout.HORIZONTAL
-        gravity = Gravity.CENTER_VERTICAL
-    }
-
-    header.addView(
-        label(executor.nome, 16f, white, true),
-        LinearLayout.LayoutParams(0, -2, 1f)
-    )
-
-    header.addView(
-        label("● ${executor.estado}", 11f, estadoCor, true)
-    )
-
-    executorBox.addView(header)
-    
-    val estadoButton = Button(this).apply {
-        text = if (executor.estado == "LIVRE") {
-            "● COLOCAR OFFLINE"
-        } else {
-            "● COLOCAR LIVRE"
+        val filtros = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
         }
 
-        textSize = 11f
-        isAllCaps = false
-        setTextColor(white)
-
-        background = android.graphics.drawable.GradientDrawable().apply {
-            setColor(Color.rgb(15, 22, 32))
-            cornerRadius = dp(12).toFloat()
-            setStroke(
-                dp(1),
-                if (executor.estado == "LIVRE") yellow else green
-            )
-        }
-
-        setOnClickListener {
-            executor.estado = if (executor.estado == "LIVRE") {
-                "OFFLINE"
-            } else {
-                "LIVRE"
-            }
-
-            showPage("Fila")
-        }
-    }
-
-    executorBox.addView(
-        estadoButton,
-        LinearLayout.LayoutParams(-1, dp(42))
-    )
-
-
-    val statsRow1 = LinearLayout(this).apply {
-    orientation = LinearLayout.HORIZONTAL
-    setPadding(0, dp(18), 0, 0)
-    }
-
-    fun addStat(
-        linha: LinearLayout,
-        valor: String,
-        descricao: String
-    ) {
-        val item = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-        }
-
-        item.addView(label(valor, 22f, white, true))
-        item.addView(label(descricao, 10f, gray))
-
-        linha.addView(
-            item,
-            LinearLayout.LayoutParams(0, -2, 1f)
-        )
-    }
-
-
-
-    addStat(
-        statsRow1,
-        executor.vendasConcluidas.toString(),
-        "Vendas concluídas"
-    )
-
-    addStat(
-        statsRow1,
-        "${executor.totalMBEnviados} MB",
-        "Total de MB enviados"
-    )
-
-    executorBox.addView(statsRow1)
-
-
-
-    val statsRow2 = LinearLayout(this).apply {
-    orientation = LinearLayout.HORIZONTAL
-    setPadding(0, dp(18), 0, 0)
-    }
-
-    addStat(
-        statsRow2,
-        executor.enviosEmCurso.toString(),
-        "Envios em curso"
-    )
-
-    addStat(
-        statsRow2,
-        executor.falhas.toString(),
-        "Falhas"
-    )
-
-    executorBox.addView(statsRow2)
-
-    executorsContainer.addView(
-        executorBox,
-        LinearLayout.LayoutParams(-1, -2).apply {
-            bottomMargin = dp(12)
-        }
-    )
-}
-
-content.addView(executorsContainer)
-
-
-                // EM CURSO AGORA
-        space(20)
-
-        content.addView(
-            label("➤  EM CURSO AGORA", 14f, white, true)
+        val nomesFiltros = listOf(
+            "TODOS",
+            "CONCLUÍDOS",
+            "ERROS",
+            "INCERTO",
+            "EM FILA"
         )
 
-        space(10)
-
-                val inProgressBox = panel(14)
-
-        inProgressBox.addView(
-            label("●  NENHUM ENVIO EM CURSO", 13f, gray, true)
-        )
-
-        inProgressBox.addView(
-            label(
-                "Os envios ativos aparecerão aqui.",
-                12f, gray
-            )
-        )
-
-        addPanel(inProgressBox)
-                // FILA DE ESPERA
-        space(20)
-
-        content.addView(
-            label("⏳  FILA DE ESPERA", 14f, white, true)
-        )
-
-        space(10)
-
-                
-val waitingBox = panel(14)
-
-if (pedidosFila.isEmpty()) {
-
-    waitingBox.addView(
-        label("⏳  NENHUM PEDIDO NA FILA", 13f, gray, true)
-    )
-
-    waitingBox.addView(
-        label(
-            "Os pedidos aguardando envio aparecerão aqui.",
-            12f, gray
-        )
-    )
-
-} else {
-
-    for (pedido in pedidosFila) {
-
-        waitingBox.addView(
-            label("📱 ${pedido.numeroCliente}", 14f, white, true)
-        )
-
-        waitingBox.addView(
-            label("📦 ${pedido.quantidadeMB} MB", 12f, gray)
-        )
-
-        waitingBox.addView(
-            label("Executor: ${pedido.executor}", 12f, gray)
-        )
-
-        waitingBox.addView(
-            label("Estado: ${pedido.estado}", 12f, yellow, true)
-        )
-
-        waitingBox.addView(
-            label("Data: ${pedido.dataHora}", 11f, gray)
-        )
-
-        waitingBox.addView(
-            View(this).apply {
-                layoutParams = LinearLayout.LayoutParams(
-                    1, dp(8)
-                )
-            }
-        )
-    }
-}
-
-  
-        addPanel(waitingBox)
-        
-       // HISTÓRICO RECENTE
-        space(20)
-
-        content.addView(
-            label("➤  HISTÓRICO RECENTE", 14f, white, true)
-        )
-
-        space(10)
-
-                val historyBox = panel(14)
-
-        historyBox.addView(
-            label("SEM REGISTOS RECENTES", 13f, gray, true)
-        )
-
-        historyBox.addView(
-            label(
-                "Os envios concluídos aparecerão aqui.",
-                12f, gray
-            )
-        )
-
-        
-        val historyButton = android.widget.Button(this).apply {
-            text = "Ver Todos"
-            textSize = 12f
-            isAllCaps = false
-            setTextColor(white)
-            background = android.graphics.drawable.GradientDrawable().apply {
-                setColor(Color.rgb(20, 27, 38))
-                cornerRadius = dp(12).toFloat()
-            }
-            setOnClickListener {
-                showPage("Conclusão")
-                updateNavigation("Conclusão")
-            }
-        }
-
-        historyBox.addView(
-            historyButton,
-            LinearLayout.LayoutParams(-1, dp(42))
-        )
-
-        addPanel(historyBox)
-
-    
-    
-    
-} else if (name == "Conclusão") {
-
-    space(25)
-    content.addView(label("NGUIRAZE NET", 21f, red, true))
-    space(18)
-
-    content.addView(label("CONCLUSÃO", 23f, white, true))
-    space(15)
-
-    var selectedStatus = "TODOS"
-
-    val statusRow = LinearLayout(this).apply {
-        orientation = LinearLayout.HORIZONTAL
-    }
-
-    val statusNames = listOf(
-        "TODOS",
-        "CONCLUÍDOS",
-        "ERROS",
-        "INCERTO",
-        "EM FILA"
-    )
-
-    val statusColors = listOf(
-        white, green, red, yellow, blue
-    )
-
-    space(22)
-    content.addView(
-        label("➤  TRANSFERÊNCIAS", 15f, white, true)
-    )
-    space(10)
-
-    val transfersBox = panel(16)
-
-    val filterLabel = label(
-        "FILTRO: TODOS", 12f, red, true
-    )
-
-    val emptyStatus = label(
-        "NENHUMA TRANSFERÊNCIA", 13f, gray, true
-    )
-
-    val emptyDescription = label(
-        "As transferências realizadas aparecerão aqui.",
-        12f, gray
-    )
-
-    val recordsContainer = LinearLayout(this).apply {
-        orientation = LinearLayout.VERTICAL
-    }
-
-    transfersBox.addView(
-        label("HISTÓRICO DE TRANSFERÊNCIAS", 13f, white, true)
-    )
-
-    transfersBox.addView(filterLabel)
-    transfersBox.addView(recordsContainer)
-
-    addPanel(transfersBox)
-
-    val countLabels = mutableListOf<TextView>()
-
-    fun corresponde(item: Transferencia, filtro: String): Boolean {
-
-        if (filtro == "TODOS") return true
-
-        return when (filtro) {
-
-            "CONCLUÍDOS" ->
-                item.estado.equals("Concluída", true) ||
-                item.estado.equals("Concluído", true)
-
-            "ERROS" ->
-                item.estado.equals("Erro", true)
-
-            "INCERTO" ->
-                item.estado.equals("Incerta", true) ||
-                item.estado.equals("Incerto", true)
-
-            "EM FILA" ->
-                item.estado.equals("Em fila", true)
-
-            else -> false
-        }
-    }
-
-    fun atualizarHistorico() {
-
-        // ACTUALIZAR CONTADORES
-        statusNames.forEachIndexed { index, nome ->
-
-            val total = transferencias.count {
-                corresponde(it, nome)
-            }
-
-            countLabels[index].text = total.toString()
-        }
-
-        // ACTUALIZAR HISTÓRICO
-        recordsContainer.removeAllViews()
-
-        val filtradas = transferencias.filter {
-            corresponde(it, selectedStatus)
-        }
-
-        if (filtradas.isEmpty()) {
-
-            emptyStatus.text =
-                if (selectedStatus == "TODOS")
-                    "NENHUMA TRANSFERÊNCIA"
-                else
-                    "NENHUMA TRANSFERÊNCIA EM $selectedStatus"
-
-            recordsContainer.addView(emptyStatus)
-            recordsContainer.addView(emptyDescription)
-
-        } else {
-
-            filtradas.reversed().forEach { item ->
-
-                val recordBox = panel(12)
-
-                recordBox.addView(
-                    label(
-                        "CLIENTE: ${item.numeroCliente}",
-                        13f, white, true
-                    )
-                )
-
-                recordBox.addView(
-                    label(
-                        "QUANTIDADE: ${item.quantidadeMB} MB",
-                        12f, gray
-                    )
-                )
-
-                recordBox.addView(
-                    label(
-                        "EXECUTOR: ${item.executor}",
-                        12f, gray
-                    )
-                )
-
-                recordBox.addView(
-                    label(
-                        "DATA/HORA: ${item.dataHora}",
-                        11f, gray
-                    )
-                )
-
-                recordBox.addView(
-                    label(
-                        "ESTADO: ${item.estado}",
-                        12f, green, true
-                    )
-                )
-
-                recordsContainer.addView(recordBox)
-                space(8)
-            }
-        }
-    }
-
-    // CRIAR INDICADORES
-    statusNames.forEachIndexed { index, statusName ->
-
-        val statusBox = panel(8)
-
-        statusBox.addView(
-            label(statusName, 9f, statusColors[index], true)
-        )
-
-        val countText = label("0", 22f, white, true)
-
-        countLabels.add(countText)
-        statusBox.addView(countText)
-
-        statusBox.alpha =
-            if (statusName == selectedStatus) 1f else 0.65f
-
-        statusBox.setOnClickListener {
-
-            selectedStatus = statusName
-
-            filterLabel.text = "FILTRO: $selectedStatus"
-
-            for (i in 0 until statusRow.childCount) {
-                statusRow.getChildAt(i).alpha = 0.65f
-            }
-
-            statusBox.alpha = 1f
-
-            atualizarHistorico()
-        }
-
-        statusRow.addView(
-            statusBox,
-            LinearLayout.LayoutParams(
-                0,
-                dp(76),
-                1f
-            ).apply {
-                setMargins(dp(2), 0, dp(2), 0)
-            }
-        )
-    }
-
-    content.addView(
-        statusRow,
-        content.indexOfChild(transfersBox)
-    )
-
-    atualizarHistorico()
-
-
-} else if (name == "SIMs") {
-
-    space(18)
-
-    content.addView(
-        label("NGUIRAZE NET", 20f, red, true)
-    )
-
-    space(12)
-
-    content.addView(
-        label("CARTÕES SIM", 20f, white, true)
-    )
-
-    space(12)
-
-    val subscriptionManager =
-        getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE)
-            as SubscriptionManager
-
-    val cartoes = try {
-        if (
-            checkSelfPermission(Manifest.permission.READ_PHONE_STATE)
-            == PackageManager.PERMISSION_GRANTED
-        ) {
-            subscriptionManager.activeSubscriptionInfoList
-                ?.sortedBy { it.simSlotIndex }
-                ?: emptyList()
-        } else {
-            emptyList()
-        }
-    } catch (e: Exception) {
-        emptyList()
-    }
-
-    if (cartoes.isEmpty()) {
-
-        content.addView(
-            label(
-                "Nenhum cartão SIM ativo detetado ou permissão não concedida.",
-                13f,
-                gray
-            )
-        )
-
-    } else {
-
-        // Selecionar o primeiro SIM automaticamente na primeira abertura
-        if (cartoes.none {
-                it.subscriptionId == selectedSimSubscriptionId
-            }
-        ) {
-            selectedSimSubscriptionId =
-                cartoes.first().subscriptionId
-        }
-
-        cartoes.forEach { sim ->
-
-            val numeroSim = try {
-                sim.number?.takeIf { it.isNotBlank() }
-                    ?: "Número indisponível"
-            } catch (e: Exception) {
-                "Número indisponível"
-            }
-
-            val operadora = sim.carrierName
-                ?.toString()
-                ?.takeIf { it.isNotBlank() }
-                ?: "Operadora desconhecida"
-
-            val ativo =
-                sim.subscriptionId == selectedSimSubscriptionId
-
-            val usados = 0
-            val restantes = 10 - usados
-
-            val simBox = panel(14)
-
-            fun simSpace(height: Int) {
-                simBox.addView(
-                    View(this),
-                    LinearLayout.LayoutParams(1, dp(height))
-                )
-            }
-
-            // CABEÇALHO
-            val cabecalho = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
-            }
-
-            cabecalho.addView(
-                label(
-                    "SIM ${sim.simSlotIndex + 1}",
-                    17f,
-                    white,
-                    true
-                ),
-                LinearLayout.LayoutParams(0, -2, 1f)
-            )
-
-            cabecalho.addView(
-                label(
-                    if (ativo) "● ACTIVO" else "● DISPONÍVEL",
-                    11f,
-                    if (ativo) green else gray,
-                    true
-                )
-            )
-
-            simBox.addView(cabecalho)
-            simSpace(10)
-
-            // NÚMERO
-            val numeroRow = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
-            }
-
-            numeroRow.addView(
-                label("📞", 19f, Color.rgb(220, 95, 105), true)
-            )
-
-            numeroRow.addView(
-                label(
-                    "  $numeroSim",
-                    16f,
-                    Color.rgb(220, 95, 105),
-                    true
-                )
-            )
-
-            simBox.addView(numeroRow)
-
-            simBox.addView(
-                label(operadora, 12f, gray)
-            )
-
-            simSpace(14)
-
-            // CONTADOR
-            val contadorRow = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
-            }
-
-            val circulo = TextView(this).apply {
-                text = "$usados/10"
-                textSize = 13f
-                setTextColor(white)
+        nomesFiltros.forEach { nome ->
+            val ativo = filtroConclusao == nome
+
+            val item = TextView(this).apply {
+                text = nome
+                textSize = 10f
                 gravity = Gravity.CENTER
-
-                background =
-                    android.graphics.drawable.GradientDrawable().apply {
-                        shape =
-                            android.graphics.drawable.GradientDrawable.OVAL
-                        setColor(Color.rgb(28, 39, 52))
-                        setStroke(dp(2), green)
-                    }
-            }
-
-            contadorRow.addView(
-                circulo,
-                LinearLayout.LayoutParams(dp(52), dp(52))
-            )
-
-            contadorRow.addView(
-                label(
-                    "   $restantes restantes",
-                    13f,
-                    gray,
-                    true
+                setTextColor(if (ativo) branco else cinza)
+                setPadding(dp(12), dp(10), dp(12), dp(10))
+                background = fundoArredondado(
+                    if (ativo) vermelho else cartao,
+                    30
                 )
-            )
-
-            contadorRow.addView(
-                View(this),
-                LinearLayout.LayoutParams(0, 1, 1f)
-            )
-
-            if (ativo) {
-
-                contadorRow.addView(
-                    label("EM USO", 11f, green, true)
-                )
-
-            } else {
-
-                val usarButton = Button(this).apply {
-                    text = "USAR"
-                    isAllCaps = false
-                    setTextColor(white)
-                    setBackgroundColor(red)
-
-                    setOnClickListener {
-                        selectedSimSubscriptionId =
-                            sim.subscriptionId
-
-                        Toast.makeText(
-                            this@MainActivity,
-                            "SIM ${sim.simSlotIndex + 1} selecionado na aplicação.",
-                            Toast.LENGTH_SHORT
-                        ).show()
-
-                        showPage("SIMs")
-                        updateNavigation("Início")
-                    }
-                }
-
-                contadorRow.addView(usarButton)
-            }
-
-            simBox.addView(contadorRow)
-            simSpace(14)
-
-            // CONSULTOR DE MB
-            val mbBox = panel(12)
-
-            mbBox.addView(
-                label("CONSULTOR DE MB", 12f, white, true)
-            )
-
-            val saldoRow = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
-            }
-
-            saldoRow.addView(
-                label("X GB", 23f, green, true),
-                LinearLayout.LayoutParams(0, -2, 1f)
-            )
-
-            val editarButton = Button(this).apply {
-                text = "✎"
-                isAllCaps = false
-                setTextColor(white)
 
                 setOnClickListener {
-                    val campo = EditText(this@MainActivity).apply {
-                        hint = "Saldo em GB"
-                        inputType =
-                            android.text.InputType.TYPE_CLASS_NUMBER or
-                            android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
-                    }
-
-                    android.app.AlertDialog.Builder(this@MainActivity)
-                        .setTitle(
-                            "Editar saldo SIM ${sim.simSlotIndex + 1}"
-                        )
-                        .setView(campo)
-                        .setPositiveButton("GUARDAR") { _, _ ->
-                            Toast.makeText(
-                                this@MainActivity,
-                                "Edição do saldo será ligada na próxima etapa.",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
-                        .setNegativeButton("CANCELAR", null)
-                        .show()
+                    filtroConclusao = nome
+                    mostrarPagina("Conclusão")
                 }
             }
 
-            saldoRow.addView(editarButton)
-            mbBox.addView(saldoRow)
-
-            mbBox.addView(
-                label(
-                    "Saldo de megas · Ainda não consultado",
-                    11f,
-                    gray
-                )
-            )
-
-            val atualizarGB = Button(this).apply {
-                text = "↻ ACTUALIZAR GB"
-                isAllCaps = false
-                setTextColor(white)
-
-                setOnClickListener {
-                    Toast.makeText(
-                        this@MainActivity,
-                        "Consulta de saldo ainda não implementada.",
-                        Toast.LENGTH_LONG
-                    ).show()
+            filtros.addView(
+                item,
+                LinearLayout.LayoutParams(-2, -2).apply {
+                    rightMargin = dp(6)
                 }
+            )
+        }
+
+        val scrollFiltros = HorizontalScrollView(this).apply {
+            isHorizontalScrollBarEnabled = false
+            addView(filtros)
+        }
+
+        content.addView(
+            scrollFiltros,
+            LinearLayout.LayoutParams(-1, -2).apply {
+                bottomMargin = dp(15)
+            }
+        )
+
+        val lista = when (filtroConclusao) {
+            "CONCLUÍDOS" -> transferencias.filter {
+                it.estado == "CONCLUÍDO"
             }
 
-            mbBox.addView(
-                atualizarGB,
-                LinearLayout.LayoutParams(-1, dp(42))
-            )
+            "ERROS" -> transferencias.filter {
+                it.estado == "ERRO"
+            }
 
-            simBox.addView(mbBox)
+            "INCERTO" -> transferencias.filter {
+                it.estado == "INCERTO"
+            }
 
-            // CADA SIM FICA NUM CARTÃO VERTICAL SEPARADO
-            addPanel(simBox, 14)
+            "EM FILA" -> transferencias.filter {
+                it.estado == "EM FILA"
+            }
+
+            else -> transferencias
         }
-    }
 
-    val infoBox = panel(12)
+        val resumo = painel(content)
 
-    infoBox.addView(
-        label("INFORMAÇÃO", 13f, yellow, true)
-    )
-
-    infoBox.addView(
-        label(
-            "O contador só aumenta após confirmação de sucesso da operadora.",
-            11f,
-            gray
+        linha(
+            resumo,
+            texto("REGISTOS", 13f, cinza, true),
+            texto("${lista.size}", 21f, branco, true)
         )
-    )
 
-                addPanel(infoBox)
+        espaco(resumo, 5)
 
-} else if (name == "Diagnóstico USSD") {
-
-    space(20)
-
-    content.addView(
-        label("DIAGNÓSTICO USSD", 21f, red, true)
-    )
-
-    space(12)
-
-    val debugBox = panel(16)
-
-    debugBox.addView(
-        label("ÚLTIMA LEITURA DA ACESSIBILIDADE", 14f, white, true)
-    )
-
-    val leituraView = label(
-        "Aguardando leitura do USSD...",
-        13f,
-        green
-    )
-
-    leituraView.setTextIsSelectable(true)
-    debugBox.addView(leituraView)
-
-    val atualizarButton = Button(this).apply {
-        text = "↻ ATUALIZAR LEITURA"
-        isAllCaps = false
-        setTextColor(white)
-        setBackgroundColor(red)
-
-        setOnClickListener {
-            val prefs = getSharedPreferences(
-                "ussd_debug",
-                MODE_PRIVATE
-            )
-
-            val leitura = prefs.getString(
-                "ultima_leitura",
-                "Nenhuma leitura recebida."
-            )
-
-            val janela = prefs.getString(
-                "ultima_janela",
-                "Desconhecida"
-            )
-
-            leituraView.text = "JANELA: $janela\n\n$leitura"
-        }
-    }
-
-    debugBox.addView(
-        atualizarButton,
-        LinearLayout.LayoutParams(-1, dp(46))
-    )
-
-    addPanel(debugBox)
-
-    val voltarButton = Button(this).apply {
-        text = "VOLTAR AO INÍCIO"
-        isAllCaps = false
-        setTextColor(white)
-
-        setOnClickListener {
-            showHome()
-            updateNavigation("Início")
-        }
-    }
-
-    content.addView(
-        voltarButton,
-        LinearLayout.LayoutParams(-1, dp(46))
-    )
-
-} else {
-
-      
-    space(25)
-    content.addView(label("NGUIRAZE NET", 21f, red, true))
-    space(20)
-    content.addView(label(name, 25f, white, true))
-    space(12)
-
-    val box = panel(20)
-
-    box.addView(
-        label("Área de $name", 16f, white, true)
-    )
-
-    box.addView(
-        label(
-            "Esta secção será desenvolvida e configurada.",
-            13f, gray
+        resumo.addView(
+            texto("Transferências apresentadas neste filtro", 11f, cinza)
         )
-    )
 
-        addPanel(box)
-}
-}
+        espaco(content, 2)
 
-private fun updateNavigation(selected: String) {
-    navigation.removeAllViews()
+        if (lista.isEmpty()) {
+            val vazio = painel(content)
+            vazio.gravity = Gravity.CENTER
+            vazio.setPadding(dp(20), dp(35), dp(20), dp(35))
 
-    val names = listOf(
-        "Início",
-        "Fila",
-        "Conclusão",
-        "Pagamentos",
-        "Config"
-    )
+            vazio.addView(
+                texto("▣", 35f, cinza, true).apply {
+                    gravity = Gravity.CENTER
+                }
+            )
 
-    val icons = listOf("⌂", "☷", "✓", "ⓢ", "⚙")
+            espaco(vazio, 12)
 
-    names.forEachIndexed { index, name ->
-        val active = name == selected
+            vazio.addView(
+                texto("Nenhuma transferência encontrada", 14f, branco, true).apply {
+                    gravity = Gravity.CENTER
+                }
+            )
 
-        val item = LinearLayout(this).apply {
+            espaco(vazio, 7)
+
+            vazio.addView(
+                texto(
+                    "Quando existirem registos reais, aparecerão aqui.",
+                    12f,
+                    cinza
+                ).apply {
+                    gravity = Gravity.CENTER
+                }
+            )
+        } else {
+            lista.forEach {
+                cartaoTransferencia(content, it)
+            }
+        }
+
+        val totalMB = transferencias
+            .filter { it.estado == "CONCLUÍDO" }
+            .sumOf { it.quantidadeMB }
+
+        val totalHoje = painel(content)
+        totalHoje.background = fundoArredondado(
+            Color.rgb(12, 45, 35),
+            17,
+            verde
+        )
+
+        totalHoje.addView(
+            texto("MB ENVIADOS HOJE", 12f, verde, true)
+        )
+
+        espaco(totalHoje, 7)
+
+        totalHoje.addView(
+            texto("${totalMB} MB", 25f, branco, true)
+        )
+
+        totalHoje.addView(
+            texto("Somente transferências confirmadas", 11f, cinza)
+        )
+    }
+
+    private fun cartaoTransferencia(
+        pai: LinearLayout,
+        t: Transferencia
+    ) {
+        val cor = corEstado(t.estado)
+
+        val caixa = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            setPadding(dp(2), dp(5), dp(2), dp(5))
-
-            setBackgroundColor(
-                if (active) red else Color.TRANSPARENT
+            setPadding(dp(14), dp(14), dp(14), dp(14))
+            background = fundoArredondado(
+                cartao,
+                16,
+                Color.rgb(42, 50, 63)
             )
-
-            addView(
-                label(
-                    icons[index], 20f,
-                    if (active) white else gray, true
-                ).apply {
-                    gravity = Gravity.CENTER
-                }
-            )
-
-            addView(
-                label(
-                    name, 9f,
-                    if (active) white else gray, active
-                ).apply {
-                    gravity = Gravity.CENTER
-                }
-            )
-
-            setOnClickListener {
-                if (name == "Início") {
-                    showHome()
-                } else {
-                    showPage(name)
-                }
-
-                updateNavigation(name)
-            }
         }
 
-        navigation.addView(  
-        item,  
-        LinearLayout.LayoutParams(0, -1, 1f).apply {  
-            marginStart = dp(2)  
-            marginEnd = dp(2)  
-        }  
-    )  
-}
+        pai.addView(
+            caixa,
+            LinearLayout.LayoutParams(-1, -2).apply {
+                bottomMargin = dp(11)
+            }
+        )
 
-}
+        linha(
+            caixa,
+            texto(t.numeroCliente, 16f, branco, true),
+            texto(t.estado, 11f, cor, true)
+        )
+
+        espaco(caixa, 9)
+
+        caixa.addView(
+            texto("${t.quantidadeMB} MB", 19f, branco, true)
+        )
+
+        espaco(caixa, 5)
+
+        caixa.addView(
+            texto("Executor: ${t.executor}", 11f, cinza)
+        )
+
+        caixa.addView(
+            texto("Data: ${t.dataHora}", 11f, cinza)
+        )
+    }
+
+    // --------------------------------------------------
+    // PAGAMENTOS
+    // --------------------------------------------------
+
+    private fun mostrarPagamentos() {
+        titulo(content, "Pagamentos", "Gestão de pagamentos recebidos")
+
+        val p = painel(content)
+        p.addView(texto("M-PESA", 15f, branco, true))
+        espaco(p, 8)
+        p.addView(texto("Integração de pagamentos será ligada na próxima fase.", 12f, cinza))
+
+        val e = painel(content)
+        e.addView(texto("E-MOLA", 15f, branco, true))
+        espaco(e, 8)
+        e.addView(texto("Leitura de comprovativos e mensagens será implementada depois.", 12f, cinza))
+
+        val historico = painel(content)
+        historico.addView(texto("HISTÓRICO DE PAGAMENTOS", 14f, branco, true))
+        espaco(historico, 8)
+        historico.addView(texto("Ainda não existem registos.", 12f, cinza))
+    }
+
+    // --------------------------------------------------
+    // CONFIGURAÇÕES
+    // --------------------------------------------------
+
+    private fun mostrarConfiguracoes() {
+        titulo(content, "Configurações", "Preferências do sistema")
+
+        val geral = painel(content)
+        geral.addView(texto("SISTEMA", 14f, branco, true))
+        espaco(geral, 12)
+
+        linha(
+            geral,
+            texto("Limite diário por SIM", 13f, branco),
+            texto("10 envios", 13f, amarelo, true)
+        )
+
+        espaco(geral, 12)
+
+        linha(
+            geral,
+            texto("Transferências simultâneas", 13f, branco),
+            texto("1", 13f, azul, true)
+        )
+
+        espaco(geral, 12)
+
+        linha(
+            geral,
+            texto("Confirmação automática", 13f, branco),
+            texto("Por configurar", 12f, amarelo, true)
+        )
+
+        val admin = painel(content)
+        admin.addView(texto("ADMINISTRAÇÃO", 14f, branco, true))
+        espaco(admin, 10)
+
+        botao(admin, "GERIR EXECUTORES", cartao2) {
+            mostrarPagina("Fila")
+        }
+
+        botao(admin, "GERIR CARTÕES SIM", cartao2) {
+            mostrarPagina("SIMs")
+        }
+
+        botao(admin, "DIAGNÓSTICO USSD", cartao2) {
+            mostrarPagina("Diagnóstico")
+        }
+    }
+
+    // --------------------------------------------------
+    // SIMs
+    // --------------------------------------------------
+
+    private fun mostrarSIMs() {
+        titulo(content, "Cartões SIM", "Gestão dos cartões e limites diários")
+
+        val painelSim = painel(content)
+
+        painelSim.addView(texto("SIM 1", 16f, branco, true))
+        espaco(painelSim, 7)
+
+        painelSim.addView(texto("Estado: Por configurar", 12f, amarelo))
+        espaco(painelSim, 7)
+
+        painelSim.addView(texto("Transferências utilizadas: 0 / 10", 12f, cinza))
+        espaco(painelSim, 7)
+
+        painelSim.addView(texto("Saldo de dados: Não consultado", 12f, cinza))
+
+        val painelSim2 = painel(content)
+
+        painelSim2.addView(texto("SIM 2", 16f, branco, true))
+        espaco(painelSim2, 7)
+
+        painelSim2.addView(texto("Estado: Por configurar", 12f, amarelo))
+        espaco(painelSim2, 7)
+
+        painelSim2.addView(texto("Transferências utilizadas: 0 / 10", 12f, cinza))
+        espaco(painelSim2, 7)
+
+        painelSim2.addView(texto("Saldo de dados: Não consultado", 12f, cinza))
+
+        val nota = painel(content)
+        nota.addView(texto("CONTROLO DE TRANSFERÊNCIAS", 13f, branco, true))
+        espaco(nota, 8)
+
+        nota.addView(
+            texto(
+                "Os contadores reais serão ligados às confirmações da operadora. Nenhum envio será contado sem confirmação.",
+                12f,
+                cinza
+            )
+        )
+    }
+
+    // --------------------------------------------------
+    // DIAGNÓSTICO USSD
+    // --------------------------------------------------
+
+    private fun mostrarDiagnostico() {
+        titulo(content, "Diagnóstico USSD", "Leituras do serviço de acessibilidade")
+
+        val diagnostico = painel(content)
+
+        val prefs = getSharedPreferences("ussd_debug", MODE_PRIVATE)
+
+        val leitura = prefs.getString(
+            "ultima_leitura",
+            "Ainda não foi recolhida nenhuma leitura."
+        )
+
+        val janela = prefs.getString(
+            "ultima_janela",
+            "Desconhecida"
+        )
+
+        diagnostico.addView(texto("ÚLTIMA JANELA", 12f, cinza, true))
+        espaco(diagnostico, 6)
+
+        diagnostico.addView(texto(janela ?: "Desconhecida", 13f, branco))
+
+        espaco(diagnostico, 15)
+
+        diagnostico.addView(texto("TEXTO DETETADO", 12f, cinza, true))
+        espaco(diagnostico, 7)
+
+        diagnostico.addView(
+            texto(leitura ?: "Sem leitura", 13f, branco)
+        )
+
+        espaco(diagnostico, 15)
+
+        botao(diagnostico, "ATUALIZAR LEITURA", vermelho) {
+            mostrarPagina("Diagnóstico")
+        }
+    }
+
+    // --------------------------------------------------
+    // NAVEGAÇÃO INFERIOR
+    // --------------------------------------------------
+
+    private fun atualizarNavegacao() {
+        navigation.removeAllViews()
+
+        val paginas = listOf(
+            "Início",
+            "Fila",
+            "Conclusão",
+            "Pagamentos",
+            "Config"
+        )
+
+        val icones = listOf(
+            "⌂",
+            "☷",
+            "✓",
+            "▣",
+            "⚙"
+        )
+
+        paginas.forEachIndexed { index, nome ->
+            val selecionado = paginaAtual == nome
+
+            val item = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER
+                setPadding(dp(2), dp(4), dp(2), dp(4))
+                setOnClickListener {
+                    mostrarPagina(nome)
+                }
+            }
+
+            item.addView(
+                texto(
+                    icones[index],
+                    20f,
+                    if (selecionado) vermelho else cinza,
+                    true
+                ).apply {
+                    gravity = Gravity.CENTER
+                }
+            )
+
+            item.addView(
+                texto(
+                    nome,
+                    9f,
+                    if (selecionado) branco else cinza,
+                    selecionado
+                ).apply {
+                    gravity = Gravity.CENTER
+                }
+            )
+
+            navigation.addView(
+                item,
+                LinearLayout.LayoutParams(0, -1, 1f)
+            )
+        }
+    }
 }
