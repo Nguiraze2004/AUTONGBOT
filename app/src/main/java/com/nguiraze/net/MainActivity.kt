@@ -75,6 +75,12 @@ class MainActivity : Activity() {
     private lateinit var content: LinearLayout
     private lateinit var navBar: LinearLayout
     private var abaAtual = "Início"
+    private var filtroConcluidos = "Todos"
+    private var velocidadeUssd = "Ultra"
+    private var autoRotacaoSim = true
+    private var sobraAutomatica = false
+    private var numeroSobra = "840000000"
+
 
     // Estado Operacional
     private var filaPausada = false
