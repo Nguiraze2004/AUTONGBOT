@@ -298,7 +298,6 @@ addView(
 )
 }
 
-content.addView(summaryCard)
 
 content.addView(summaryCard)
 
