@@ -296,7 +296,6 @@ addView(
 )
 
     
-
 content.addView(summaryCard)
 
 
