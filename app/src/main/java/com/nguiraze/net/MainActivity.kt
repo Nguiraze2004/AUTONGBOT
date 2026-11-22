@@ -709,55 +709,82 @@ marginStart = dp(2); marginEnd = dp(2)
 })
 }
 }
+
 private fun buildTransacaoRow(item: TransacaoConcluida): LinearLayout {
 
-val ok = item.status == "Entregue"
-val incerto = item.status == "Incerto"
+    val ok = item.status == "Entregue"
+    val incerto = item.status == "Incerto"
 
-val statusText = if (ok) "✓ Entregue"
-else if (incerto) "● Incerto"
-else "✕ Falhou"
+    val statusText = if (ok) "✓ Entregue"
+    else if (incerto) "● Incerto"
+    else "✕ Falhou"
 
-val corEstado = when {
-    ok -> green
-    incerto -> yellow
-    else -> red
+    val corEstado = when {
+        ok -> green
+        incerto -> yellow
+        else -> red
+    }
+
+    val fundoEstado = when {
+        ok -> greenBg
+        incerto -> Color.rgb(55, 43, 12)
+        else -> Color.rgb(65, 18, 26)
+    }
+
+    return cardBox(cardDark, borderBlue).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+
+        val icon = txt(
+            if (ok) "✓" else if (incerto) "●" else "✕",
+            14f,
+            corEstado,
+            true
+        ).apply {
+            gravity = Gravity.CENTER
+            background = oval(fundoEstado, corEstado)
+        }
+
+        addView(icon, LinearLayout.LayoutParams(dp(36), dp(36)))
+
+        val mid = LinearLayout(this@MainActivity).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(10), 0, 0, 0)
+
+            addView(txt(item.numeroCliente, 15f, white, true))
+
+            addView(
+                txt(
+                    "Megas · ${item.hora} · ${item.simInfo}",
+                    11f,
+                    lightBlue
+                )
+            )
+        }
+
+        addView(mid, LinearLayout.LayoutParams(0, -2, 1f))
+
+        val right = LinearLayout(this@MainActivity).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.END
+
+            addView(txt("${item.megas} MB", 13f, cyan, true))
+
+            addView(
+                pillBadge(
+                    statusText,
+                    corEstado,
+                    fundoEstado,
+                    corEstado
+                )
+            )
+        }
+
+        addView(right)
+    }
 }
 
-val fundoEstado = when {
-    ok -> greenBg
-    incerto -> Color.rgb(55, 43, 12)
-    else -> Color.rgb(65, 18, 26)
-}
-return cardBox(cardDark, borderBlue).apply {
-orientation = LinearLayout.HORIZONTAL
-gravity = Gravity.CENTER_VERTICAL
-val icon = txt(if (ok) "✓" else "✕", 14f, if (ok) green else red, true).apply {
-gravity = Gravity.CENTER
-background = oval(if (ok) greenBg else Color.rgb(65, 18, 26), if (ok) green else red)
-}
-addView(icon, LinearLayout.LayoutParams(dp(36), dp(36)))
-val mid = LinearLayout(this@MainActivity).apply {
-orientation = LinearLayout.VERTICAL
-setPadding(dp(10), 0, 0, 0)
-addView(txt(item.numeroCliente, 15f, white, true))
-addView(txt("Megas · ${item.hora} · ${item.simInfo}", 11f, lightBlue))
-}
-addView(mid, LinearLayout.LayoutParams(0, -2, 1f))
-val right = LinearLayout(this@MainActivity).apply {
-orientation = LinearLayout.VERTICAL
-gravity = Gravity.END
-addView(txt("${item.megas} MB", 13f, cyan, true))
-addView(pillBadge(
-if (ok) "✓ Entregue" else "✕ Falhou",
-if (ok) green else red,
-if (ok) greenBg else Color.rgb(65, 18, 26),
-if (ok) green else red
-))
-}
-addView(right)
-}
-}
+
 private inner class RingProgressView(
 ctx: Context,
 private val pct: Float,
