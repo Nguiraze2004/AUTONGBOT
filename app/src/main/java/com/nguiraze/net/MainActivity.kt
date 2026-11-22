@@ -292,10 +292,10 @@ val pedidosCircle = LinearLayout(this@MainActivity).apply {
 
 addView(
     pedidosCircle,
-    LinearLayout.LayoutParams(dp(140), dp(140))
+    LinearLayout.LayoutParams(dp(140), dp(140)).apply {
+        leftMargin = dp(20)
+    }
 )
-
-} // FECHA O summaryCard
 
 content.addView(summaryCard)
 
