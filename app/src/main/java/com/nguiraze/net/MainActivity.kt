@@ -295,9 +295,9 @@ addView(
     LinearLayout.LayoutParams(dp(140), dp(140))
 )
 
-    
-content.addView(summaryCard)
+} // FECHA O summaryCard
 
+content.addView(summaryCard)
 
     // ATALHOS
     val iconsRow = LinearLayout(this).apply {
