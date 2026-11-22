@@ -519,208 +519,362 @@ private fun telaInicio() {
 // =====================================================================
 // TELA 2: FILA & EXECUTORES (IGUAL À ÚLTIMA IMAGEM GERADA)
 // =====================================================================
+
 private fun telaFilaExecutores() {
-// Cabeçalho Fila & Executores
-val topBar = LinearLayout(this).apply {
-orientation = LinearLayout.HORIZONTAL
-gravity = Gravity.CENTER_VERTICAL
-layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(10) }
-val back = txt("‹", 24f, white, true).apply {
-setPadding(0, 0, dp(12), 0)
-setOnClickListener { navegarPara("Início") }
+
+    // Cabeçalho
+    val topBar = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        layoutParams = LinearLayout.LayoutParams(-1, -2).apply {
+            bottomMargin = dp(10)
+        }
+
+        val back = txt("‹", 24f, white, true).apply {
+            setPadding(0, 0, dp(12), 0)
+            setOnClickListener {
+                navegarPara("Início")
+            }
+        }
+        addView(back)
+
+        val titleCol = LinearLayout(this@MainActivity).apply {
+            orientation = LinearLayout.VERTICAL
+
+            addView(txt("Fila & Executores", 18f, white, true))
+
+            val pendentes = filaEspera.size +
+                (if (pedidoEmCurso != null) 1 else 0)
+
+            val ativos = executores.count { it.online }
+
+            addView(
+                txt(
+                    "$pendentes pedidos pendentes · $ativos executores ativos",
+                    11f,
+                    lightBlue
+                )
+            )
+        }
+
+        addView(titleCol, LinearLayout.LayoutParams(0, -2, 1f))
+
+        addView(
+            pillBadge(
+                if (filaPausada) "● Pausada" else "● Ativa",
+                if (filaPausada) yellow else green,
+                greenBg,
+                borderBlue
+            )
+        )
+    }
+
+    content.addView(topBar)
+
+    // Controlos da fila
+    val controlRow = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        layoutParams = LinearLayout.LayoutParams(-1, -2).apply {
+            bottomMargin = dp(12)
+        }
+
+        addView(
+            smallActionBtn(
+                if (filaPausada) "▶ Retomar Fila"
+                else "❚❚ Pausar Fila",
+                yellow
+            ) {
+                filaPausada = !filaPausada
+                navegarPara("Fila")
+            },
+            LinearLayout.LayoutParams(0, dp(38), 1f).apply {
+                rightMargin = dp(6)
+            }
+        )
+
+        addView(
+            smallActionBtn("🗑 Limpar", red) {
+                filaEspera.clear()
+                navegarPara("Fila")
+            },
+            LinearLayout.LayoutParams(0, dp(38), 1f).apply {
+                leftMargin = dp(6)
+            }
+        )
+    }
+
+    content.addView(controlRow)
+
+    // Secção EXECUTORES
+    content.addView(
+        txt(
+            "EXECUTORES (${executores.size})",
+            12f,
+            lightBlue,
+            true
+        ).apply {
+            setPadding(0, dp(4), 0, dp(8))
+        }
+    )
+
+    val execRow = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        layoutParams = LinearLayout.LayoutParams(-1, -2).apply {
+            bottomMargin = dp(12)
+        }
+    }
+
+    if (executores.isEmpty()) {
+        execRow.addView(
+            txt(
+                "Nenhum executor configurado.",
+                12f,
+                lightBlue
+            )
+        )
+    }
+
+    executores.forEachIndexed { idx, ag ->
+
+        val cardAg = cardBox(
+            if (ag.online) Color.rgb(10, 36, 38) else cardDark,
+            if (ag.online) green else borderBlue
+        ).apply {
+
+            val top = LinearLayout(this@MainActivity).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+
+                val badgeSigla = txt(
+                    ag.sigla,
+                    12f,
+                    if (ag.online) green else yellow,
+                    true
+                ).apply {
+                    gravity = Gravity.CENTER
+                    background = oval(
+                        Color.rgb(16, 48, 44),
+                        if (ag.online) green else yellow
+                    )
+                }
+
+                addView(
+                    badgeSigla,
+                    LinearLayout.LayoutParams(dp(32), dp(32))
+                )
+
+                val nameCol = LinearLayout(this@MainActivity).apply {
+                    orientation = LinearLayout.VERTICAL
+                    setPadding(dp(8), 0, 0, 0)
+
+                    addView(txt(ag.nome, 13f, white, true))
+                    addView(txt("#${ag.id}", 11f, lightBlue))
+                }
+
+                addView(nameCol)
+            }
+
+            addView(top)
+
+            addView(
+                txt(
+                    if (ag.online) "● Online" else "● Standby",
+                    11f,
+                    if (ag.online) green else yellow,
+                    true
+                ).apply {
+                    setPadding(0, dp(6), 0, dp(8))
+                }
+            )
+
+            val bot = LinearLayout(this@MainActivity).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.BOTTOM
+
+                val vCol = LinearLayout(this@MainActivity).apply {
+                    orientation = LinearLayout.VERTICAL
+
+                    addView(
+                        txt(
+                            "${ag.vendas}",
+                            18f,
+                            if (ag.online) green else white,
+                            true
+                        )
+                    )
+
+                    addView(txt("vendas", 10f, lightBlue))
+                }
+
+                addView(vCol, LinearLayout.LayoutParams(0, -2, 1f))
+
+                addView(
+                    pillBadge(
+                        ag.simTag,
+                        lightBlue,
+                        Color.rgb(14, 34, 68),
+                        borderBlue
+                    )
+                )
+            }
+
+            addView(bot)
+        }
+
+        execRow.addView(
+            cardAg,
+            LinearLayout.LayoutParams(0, -2, 1f).apply {
+                if (idx == 0) rightMargin = dp(5)
+                else leftMargin = dp(5)
+            }
+        )
+    }
+
+    content.addView(execRow)
+
+    // Secção EM CURSO AGORA
+    content.addView(
+        txt(
+            "⌛ EM CURSO AGORA",
+            12f,
+            lightBlue,
+            true
+        ).apply {
+            setPadding(0, 0, 0, dp(6))
+        }
+    )
+
+    val runningCard = cardBox(
+        Color.rgb(8, 32, 72),
+        cyan
+    ).apply {
+
+        val atual = pedidoEmCurso
+
+        if (atual != null) {
+
+            val r1 = LinearLayout(this@MainActivity).apply {
+                orientation = LinearLayout.HORIZONTAL
+
+                addView(
+                    txt(atual.numeroCliente, 16f, white, true),
+                    LinearLayout.LayoutParams(0, -2, 1f)
+                )
+
+                addView(
+                    txt("${atual.megas} MB", 15f, cyan, true)
+                )
+            }
+
+            addView(r1)
+
+            addView(
+                txt(
+                    "Pedido registado · USSD ainda não confirmado",
+                    11f,
+                    yellow
+                ).apply {
+                    setPadding(0, dp(4), 0, 0)
+                }
+            )
+
+        } else {
+
+            addView(
+                txt(
+                    "Nenhuma ordem em curso no momento.",
+                    12f,
+                    lightBlue
+                )
+            )
+        }
+    }
+
+    content.addView(runningCard)
+
+    // Secção FILA DE ESPERA
+    content.addView(
+        txt(
+            "FILA DE ESPERA (${filaEspera.size})",
+            12f,
+            lightBlue,
+            true
+        ).apply {
+            setPadding(0, dp(6), 0, dp(8))
+        }
+    )
+
+    if (filaEspera.isEmpty()) {
+        content.addView(
+            txt(
+                "Não existem pedidos na fila de espera.",
+                12f,
+                lightBlue
+            ).apply {
+                setPadding(dp(4), dp(8), dp(4), dp(12))
+            }
+        )
+    }
+
+    filaEspera.forEachIndexed { index, ped ->
+
+        val pRow = cardBox(cardDark, borderBlue).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+
+            val info = LinearLayout(this@MainActivity).apply {
+                orientation = LinearLayout.VERTICAL
+
+                addView(
+                    txt(
+                        "#${index + 1} · ${ped.numeroCliente}",
+                        14f,
+                        white,
+                        true
+                    )
+                )
+
+                addView(
+                    txt(
+                        "${ped.megas} MB · ${ped.hora}",
+                        11f,
+                        lightBlue
+                    )
+                )
+            }
+
+            addView(
+                info,
+                LinearLayout.LayoutParams(0, -2, 1f)
+            )
+
+            addView(
+                smallActionBtn("▲ Subir", cyan) {
+                    if (index > 0) {
+                        val item = filaEspera.removeAt(index)
+                        filaEspera.add(index - 1, item)
+                        navegarPara("Fila")
+                    }
+                },
+                LinearLayout.LayoutParams(dp(72), dp(30)).apply {
+                    rightMargin = dp(6)
+                }
+            )
+
+            addView(
+                smallActionBtn("✕ Remover", red) {
+                    filaEspera.removeAt(index)
+                    navegarPara("Fila")
+                },
+                LinearLayout.LayoutParams(dp(84), dp(30))
+            )
+        }
+
+        content.addView(pRow)
+    }
 }
-addView(back)
-val titleCol = LinearLayout(this@MainActivity).apply {
-orientation = LinearLayout.VERTICAL
-addView(txt("Fila & Executores", 18f, white, true))
-val pendentes = filaEspera.size + (if (pedidoEmCurso != null) 1 else 0)
-addView(txt("$pendentes pedidos pendentes · ${executores.size} executores ativos", 11f, lightBlue))
-}
-addView(titleCol, LinearLayout.LayoutParams(0, -2, 1f))
-addView(pillBadge(if (filaPausada) "● Pausada" else "● Ativa", if (filaPausada) yellow else green, greenBg, borderBlue))
-}
-content.addView(topBar)
-// Botões Pausar Fila | Limpar
-val controlRow = LinearLayout(this).apply {
-orientation = LinearLayout.HORIZONTAL
-layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(12) }
-addView(smallActionBtn(if (filaPausada) "▶ Retomar Fila" else "❚❚ Pausar Fila", yellow) {
-filaPausada = !filaPausada; navegarPara("Fila")
-}, LinearLayout.LayoutParams(0, dp(38), 1f).apply { rightMargin = dp(6) })
-addView(smallActionBtn("🗑 Limpar", red) {
-filaEspera.clear(); navegarPara("Fila")
-}, LinearLayout.LayoutParams(0, dp(38), 1f).apply { leftMargin = dp(6) })
-}
-content.addView(controlRow)
-// Cartão ENVIO MANUAL
-val manualCard = cardBox(cardNavy, borderBlue).apply {
-addView(txt("➤ ENVIO MANUAL", 13f, cyan, true))
-addView(txt("Despacha direto para o primeiro Agente livre · 100MB - 10GB", 11f, lightBlue).apply {
-setPadding(0, dp(2), 0, dp(10))
-})
-val inputNumero = EditText(this@MainActivity).apply {
-hint = "Número do cliente (ex: 84xxxxxxx)"
-setText("847337160")
-inputType = InputType.TYPE_CLASS_PHONE
-setTextColor(white)
-setHintTextColor(lightBlue)
-textSize = 14f
-setPadding(dp(12), dp(10), dp(12), dp(10))
-background = roundRect(Color.rgb(6, 18, 42), borderBlue, 10)
-}
-val inputMegas = EditText(this@MainActivity).apply {
-hint = "Megabytes (ex: 100)"
-setText("10240")
-inputType = InputType.TYPE_CLASS_NUMBER
-setTextColor(white)
-setHintTextColor(lightBlue)
-textSize = 14f
-setPadding(dp(12), dp(10), dp(12), dp(10))
-background = roundRect(Color.rgb(6, 18, 42), borderBlue, 10)
-}
-// Pacotes Rápidos
-val pacotesRow = LinearLayout(this@MainActivity).apply {
-orientation = LinearLayout.HORIZONTAL
-layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(10) }
-}
-listOf("450MB · 10 MT" to "450", "1GB · 20 MT" to "1024", "10GB · 150 MT" to "10240").forEachIndexed { idx, (labelPct, mbVal) ->
-val chip = txt(labelPct, 11f, if (idx == 0) green else white, true).apply {
-gravity = Gravity.CENTER
-setPadding(dp(6), dp(6), dp(6), dp(6))
-background = roundRect(Color.rgb(6, 22, 48), if (idx == 0) green else borderBlue, 16)
-setOnClickListener { inputMegas.setText(mbVal) }
-}
-pacotesRow.addView(chip, LinearLayout.LayoutParams(0, -2, 1f).apply {
-if (idx > 0) leftMargin = dp(6)
-})
-}
-addView(pacotesRow)
-addView(inputNumero, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) })
-addView(inputMegas, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(6) })
-addView(txt("Aceite entre 100MB e 10240MB (10GB).", 10f, lightBlue).apply { setPadding(0, 0, 0, dp(10)) })
-val btnDespachar = Button(this@MainActivity).apply {
-text = "➤  Despachar para um Agente"
-isAllCaps = false
-setTextColor(white)
-setTypeface(null, Typeface.BOLD)
-background = GradientDrawable(
-GradientDrawable.Orientation.LEFT_RIGHT,
-intArrayOf(Color.rgb(12, 115, 195), Color.rgb(0, 175, 225))
-).apply { cornerRadius = dp(12).toFloat() }
-setOnClickListener {
-val num = inputNumero.text.toString().trim()
-val mb = inputMegas.text.toString().toIntOrNull() ?: 0
-if (num.length < 9 || mb < 100) {
-Toast.makeText(this@MainActivity, "Preencha número válido e mínimo 100MB", Toast.LENGTH_SHORT).show()
-return@setOnClickListener
-}
-val hora = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
-filaEspera.add(PedidoFila("${filaEspera.size + 1}", num, mb, hora))
-Toast.makeText(this@MainActivity, "Adicionado à fila para o Agente!", Toast.LENGTH_SHORT).show()
-navegarPara("Fila")
-}
-}
-addView(btnDespachar, LinearLayout.LayoutParams(-1, dp(44)))
-}
-content.addView(manualCard)
-// Secção EXECUTORES (2)
-content.addView(txt("EXECUTORES (${executores.size})", 12f, lightBlue, true).apply { setPadding(0, dp(4), 0, dp(8)) })
-val execRow = LinearLayout(this).apply {
-orientation = LinearLayout.HORIZONTAL
-layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(12) }
-}
-executores.forEachIndexed { idx, ag ->
-val cardAg = cardBox(if (ag.online) Color.rgb(10, 36, 38) else cardDark, if (ag.online) green else borderBlue).apply {
-val top = LinearLayout(this@MainActivity).apply {
-orientation = LinearLayout.HORIZONTAL
-gravity = Gravity.CENTER_VERTICAL
-val badgeSigla = txt(ag.sigla, 12f, if (ag.online) green else yellow, true).apply {
-gravity = Gravity.CENTER
-background = oval(Color.rgb(16, 48, 44), if (ag.online) green else yellow)
-}
-addView(badgeSigla, LinearLayout.LayoutParams(dp(32), dp(32)))
-val nameCol = LinearLayout(this@MainActivity).apply {
-orientation = LinearLayout.VERTICAL
-setPadding(dp(8), 0, 0, 0)
-addView(txt(ag.nome, 13f, white, true))
-addView(txt("#${ag.id}", 11f, lightBlue))
-}
-addView(nameCol)
-}
-addView(top)
-addView(txt(if (ag.online) "● Online" else "● Standby", 11f, if (ag.online) green else yellow, true).apply {
-setPadding(0, dp(6), 0, dp(8))
-})
-val bot = LinearLayout(this@MainActivity).apply {
-orientation = LinearLayout.HORIZONTAL
-gravity = Gravity.BOTTOM
-val vCol = LinearLayout(this@MainActivity).apply {
-orientation = LinearLayout.VERTICAL
-addView(txt("${ag.vendas}", 18f, if (ag.online) green else white, true))
-addView(txt("vendas", 10f, lightBlue))
-}
-addView(vCol, LinearLayout.LayoutParams(0, -2, 1f))
-addView(pillBadge(ag.simTag, lightBlue, Color.rgb(14, 34, 68), borderBlue))
-}
-addView(bot)
-setOnClickListener {
-ag.online = !ag.online
-navegarPara("Fila")
-}
-}
-execRow.addView(cardAg, LinearLayout.LayoutParams(0, -2, 1f).apply {
-if (idx == 0) rightMargin = dp(5) else leftMargin = dp(5)
-})
-}
-content.addView(execRow)
-// Secção EM CURSO AGORA
-content.addView(txt("⌛ EM CURSO AGORA", 12f, lightBlue, true).apply { setPadding(0, 0, 0, dp(6)) })
-val runningCard = cardBox(Color.rgb(8, 32, 72), cyan).apply {
-val atual = pedidoEmCurso
-if (atual != null) {
-val r1 = LinearLayout(this@MainActivity).apply {
-orientation = LinearLayout.HORIZONTAL
-addView(txt(atual.numeroCliente, 16f, white, true), LinearLayout.LayoutParams(0, -2, 1f))
-addView(txt("${atual.megas} MB", 15f, cyan, true))
-}
-addView(r1)
-addView(txt("Enviando via Este aparelho #1 (SIM 2)", 11f, lightBlue).apply { setPadding(0, dp(2), 0, dp(8)) })
-addView(txt("◌ Discando comando USSD *111#...", 11f, cyan).apply {
-setPadding(dp(10), dp(6), dp(10), dp(6))
-background = roundRect(Color.rgb(6, 20, 48), borderBlue, 8)
-})
-} else {
-addView(txt("Nenhuma ordem em curso no momento.", 12f, lightBlue))
-}
-}
-content.addView(runningCard)
-// Secção FILA DE ESPERA
-content.addView(txt("FILA DE ESPERA (${filaEspera.size})", 12f, lightBlue, true).apply { setPadding(0, dp(6), 0, dp(8)) })
-filaEspera.forEachIndexed { index, ped ->
-val pRow = cardBox(cardDark, borderBlue).apply {
-orientation = LinearLayout.HORIZONTAL
-gravity = Gravity.CENTER_VERTICAL
-val info = LinearLayout(this@MainActivity).apply {
-orientation = LinearLayout.VERTICAL
-addView(txt("#${index + 1} · ${ped.numeroCliente}", 14f, white, true))
-addView(txt("${ped.megas} MB · ${ped.hora}", 11f, lightBlue))
-}
-addView(info, LinearLayout.LayoutParams(0, -2, 1f))
-addView(smallActionBtn("▲ Subir", cyan) {
-if (index > 0) {
-val item = filaEspera.removeAt(index)
-filaEspera.add(0, item)
-navegarPara("Fila")
-}
-}, LinearLayout.LayoutParams(dp(72), dp(30)).apply { rightMargin = dp(6) })
-addView(smallActionBtn("✕ Remover", red) {
-filaEspera.removeAt(index)
-navegarPara("Fila")
-}, LinearLayout.LayoutParams(dp(84), dp(30)))
-}
-content.addView(pRow)
-}
-}
+
+
 // =====================================================================
 // TELA 3: CONCLUÍDOS
 // =====================================================================
