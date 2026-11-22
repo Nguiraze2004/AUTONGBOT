@@ -88,24 +88,23 @@ private var sim2Usados = 0
 private val limiteSim = 10  
 
 // Dados em Memória  
-private var pedidoEmCurso: PedidoFila? = PedidoFila("0", "847337160", 10240, "14:39")  
+private var pedidoEmCurso: PedidoFila? = null
 
-private val filaEspera = mutableListOf(  
-    PedidoFila("1", "856942180", 1000, "14:40"),  
-    PedidoFila("2", "842910482", 500, "14:41")  
-)  
+private val filaEspera = mutableListOf<PedidoFila>()
 
-private val executores = mutableListOf(  
-    AgenteExecutor(1, "Este aparelho", "ES", true, 4, "SIM 2 · Vodacom"),  
-    AgenteExecutor(2, "Agente 2", "AG", false, 0, "SIM 1 · Movitel")  
-)  
+private val executores = mutableListOf(
+    AgenteExecutor(
+        1,
+        "Este aparelho",
+        "ES",
+        false,
+        0,
+        "USSD não ligado"
+    )
+)
 
-private val concluidos = mutableListOf(  
-    TransacaoConcluida("847337160", 10240, 150, "23:24", "SIM 2 (Vodacom)", "Entregue"),  
-    TransacaoConcluida("853767234", 10240, 150, "23:17", "SIM 1 (Movitel)", "Entregue"),  
-    TransacaoConcluida("850387303", 10240, 150, "23:09", "SIM 2 (Vodacom)", "Entregue"),  
-    TransacaoConcluida("843119024", 5120, 75, "22:45", "SIM 1 (Vodacom)", "Falhou")  
-)  
+private val concluidos = mutableListOf<TransacaoConcluida>()
+   
 
 private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()  
 
