@@ -712,6 +712,10 @@ private fun buildTransacaoRow(item: TransacaoConcluida): LinearLayout {
 val ok = item.status == "Entregue"
 val incerto = item.status == "Incerto"
 
+val statusText = if (ok) "✓ Entregue"
+else if (incerto) "● Incerto"
+else "✕ Falhou"
+
 val corEstado = when {
     ok -> green
     incerto -> yellow
