@@ -708,6 +708,7 @@ marginStart = dp(2); marginEnd = dp(2)
 }
 }
 private fun buildTransacaoRow(item: TransacaoConcluida): LinearLayout {
+
 val ok = item.status == "Entregue"
 val incerto = item.status == "Incerto"
 
