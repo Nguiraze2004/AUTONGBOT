@@ -572,10 +572,12 @@ private fun telaConcluidos() {
 
     // SELECIONAR REGISTOS
     val listaConcluidos = when (filtroConclusao) {
-        "Entregue" -> concluidos.filter { it.status == "Entregue" }
-        "Falhou" -> concluidos.filter { it.status == "Falhou" }
-        "Incerto" -> concluidos.filter { it.status == "Incerto" }
-        else -> concluidos
+    "Todos" -> concluidos
+    "Entregue" -> concluidos.filter { it.status == "Entregue" }
+    "Falhou" -> concluidos.filter { it.status == "Falhou" }
+    "Incerto" -> concluidos.filter { it.status == "Incerto" }
+    "Em fila" -> emptyList()
+    else -> emptyList()
     }
 
     val mostrarFila = filtroConclusao == "Todos" ||
