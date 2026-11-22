@@ -159,152 +159,364 @@ private fun navegarPara(aba: String) {
 // =====================================================================  
 // TELA 1: INÍCIO (DASHBOARD PRINCIPAL)  
 // =====================================================================  
-private fun telaInicio() {  
-    // Cabeçalho com Robô + Título + Online  
-    val header = LinearLayout(this).apply {  
-        orientation = LinearLayout.HORIZONTAL  
-        gravity = Gravity.CENTER_VERTICAL  
+    
+private fun telaInicio() {
 
-        val avatar = txt("🤖", 19f, white).apply {  
-            gravity = Gravity.CENTER  
-            background = oval(Color.rgb(12, 42, 95), cyan)  
-        }  
-        addView(avatar, LinearLayout.LayoutParams(dp(42), dp(42)))  
+    // CALCULAR DADOS DOS REGISTOS ENTREGUES
+    val entreguesHoje = concluidos.filter {
+        it.status == "Entregue"
+    }
 
-        val titleCol = LinearLayout(this@MainActivity).apply {  
-            orientation = LinearLayout.VERTICAL  
-            setPadding(dp(10), 0, 0, 0)  
-            val sp = SpannableString("NGUIRAZE NET").apply {  
-                setSpan(ForegroundColorSpan(cyan), 9, 12, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)  
-            }  
-            addView(TextView(this@MainActivity).apply {  
-                text = sp; textSize = 16f; setTextColor(white); setTypeface(null, Typeface.BOLD)  
-            })  
-            addView(txt("Versão instalada: 1.86 (86)", 11f, lightBlue))  
-        }  
-        addView(titleCol, LinearLayout.LayoutParams(0, -2, 1f))  
+    val totalConcluidas = entreguesHoje.size
 
-        addView(pillBadge("● Online", green, greenBg, Color.rgb(18, 110, 95)))  
-    }  
-    content.addView(header)  
+    val totalMegas = entreguesHoje.sumBy {
+        it.megas
+    }
 
-    // Tag icone de megas  
-    content.addView(pillBadge("icone de megas", lightBlue, Color.rgb(10, 38, 92), borderBlue).apply {  
-        layoutParams = LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(8); bottomMargin = dp(12) }  
-    })  
+    val gbCalculados = totalMegas / 1024.0
 
-    // Cartão Principal: Anel GB Vendidos + Resumo de Transferências  
-    val summaryCard = cardBox(cardNavy, borderBlue).apply {  
-        orientation = LinearLayout.HORIZONTAL  
-        gravity = Gravity.CENTER_VERTICAL  
+    val faturamentoHoje = entreguesHoje.sumBy {
+        it.valorMT
+    }
 
-        val gbStr = String.format(Locale("pt", "MZ"), "%.2f", gbVendidosHoje)  
-        addView(RingProgressView(this@MainActivity, 0.78f, gbStr, "GB vendidos"), LinearLayout.LayoutParams(dp(140), dp(140)))  
+    val progresso = if (metaGb > 0) {
+        (gbCalculados / metaGb.toDouble()).toFloat().coerceIn(0f, 1f)
+    } else {
+        0f
+    }
 
-        val rightStats = LinearLayout(this@MainActivity).apply {  
-            orientation = LinearLayout.VERTICAL  
-            setPadding(dp(14), 0, 0, 0)  
-            val totalConcluidas = concluidos.count { it.status == "Entregue" } + 37  
-            addView(txt("$totalConcluidas", 28f, white, true))  
-            addView(txt("transferências", 13f, white))  
-            addView(txt("Concluídos hoje", 12f, green, true).apply { setPadding(0, 0, 0, dp(10)) })  
-            addView(txt("Meta: $metaGb GB", 12f, lightBlue))  
-            addView(txt("Saldo hoje: $saldoHojeMT MT", 12f, white, true))  
-        }  
-        addView(rightStats, LinearLayout.LayoutParams(0, -2, 1f))  
-    }  
-    content.addView(summaryCard)  
+    val gbStr = String.format(
+        Locale("pt", "MZ"),
+        "%.2f",
+        gbCalculados
+    )
 
-    // Linha dos 4 Ícones: Enviar megas | Fila | Histórico | Meta  
-    val iconsRow = LinearLayout(this).apply {  
-        orientation = LinearLayout.HORIZONTAL  
-        layoutParams = LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6); bottomMargin = dp(16) }  
-    }  
-    val atalhos = listOf(  
-        Triple("➤", "Enviar megas") { navegarPara("Fila") },  
-        Triple("☰", "Fila") { navegarPara("Fila") },  
-        Triple("▤", "Histórico") { navegarPara("Concluídos") },  
-        Triple("◉", "Meta") { Toast.makeText(this, "Meta atual: $metaGb GB", Toast.LENGTH_SHORT).show() }  
-    )  
-    atalhos.forEach { (ico, nome, acao) ->  
-        val col = LinearLayout(this).apply {  
-            orientation = LinearLayout.VERTICAL  
-            gravity = Gravity.CENTER  
-            val circle = txt(ico, 17f, white, true).apply {  
-                gravity = Gravity.CENTER  
-                background = oval(Color.rgb(14, 65, 165), Color.rgb(45, 135, 255))  
-            }  
-            addView(circle, LinearLayout.LayoutParams(dp(52), dp(52)))  
-            addView(txt(nome, 11f, white, true).apply { gravity = Gravity.CENTER; setPadding(0, dp(5), 0, 0) })  
-            setOnClickListener { acao() }  
-        }  
-        iconsRow.addView(col, LinearLayout.LayoutParams(0, -2, 1f))  
-    }  
-    content.addView(iconsRow)  
+    // CABEÇALHO
+    val header = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
 
-    // Cabeçalho CARTÕES SIM + Botão + Gerir SIMs  
-    val simHeader = LinearLayout(this).apply {  
-        orientation = LinearLayout.HORIZONTAL  
-        gravity = Gravity.CENTER_VERTICAL  
-        layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) }  
-        addView(txt("CARTÕES SIM", 13f, lightBlue, true), LinearLayout.LayoutParams(0, -2, 1f))  
-        addView(pillBadge("+ Gerir SIMs", cyan, cardDark, cyan).apply {
+        val avatar = txt("🤖", 19f, white).apply {
+            gravity = Gravity.CENTER
+            background = oval(Color.rgb(12, 42, 95), cyan)
+        }
 
-setOnClickListener { navegarPara("SIMs") }
-})
+        addView(
+            avatar,
+            LinearLayout.LayoutParams(dp(42), dp(42))
+        )
+
+        val titleCol = LinearLayout(this@MainActivity).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(10), 0, 0, 0)
+
+            val sp = SpannableString("NGUIRAZE NET").apply {
+                setSpan(
+                    ForegroundColorSpan(cyan),
+                    9,
+                    12,
+                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+            }
+
+            addView(TextView(this@MainActivity).apply {
+                text = sp
+                textSize = 16f
+                setTextColor(white)
+                setTypeface(null, Typeface.BOLD)
+            })
+
+            addView(txt("Versão instalada: 1.86 (86)", 11f, lightBlue))
+        }
+
+        addView(titleCol, LinearLayout.LayoutParams(0, -2, 1f))
+
+        addView(
+            pillBadge(
+                "● USSD não ligado",
+                yellow,
+                Color.rgb(55, 43, 12),
+                yellow
+            )
+        )
+    }
+
+    content.addView(header)
+
+    // CARTÃO PRINCIPAL
+    val summaryCard = cardBox(cardNavy, borderBlue).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+
+        addView(
+            RingProgressView(
+                this@MainActivity,
+                progresso,
+                gbStr,
+                "GB vendidos"
+            ),
+            LinearLayout.LayoutParams(dp(140), dp(140))
+        )
+
+        val rightStats = LinearLayout(this@MainActivity).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(14), 0, 0, 0)
+
+            addView(txt("$totalConcluidas", 28f, white, true))
+            addView(txt("transferências", 13f, white))
+
+            addView(
+                txt("Concluídos hoje", 12f, green, true).apply {
+                    setPadding(0, 0, 0, dp(10))
+                }
+            )
+
+            addView(txt("Meta: $metaGb GB", 12f, lightBlue))
+
+            addView(
+                txt("Saldo hoje: $faturamentoHoje MT", 12f, white, true)
+            )
+        }
+
+        addView(rightStats, LinearLayout.LayoutParams(0, -2, 1f))
+    }
+
+    content.addView(summaryCard)
+
+    // ATALHOS
+    val iconsRow = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        layoutParams = LinearLayout.LayoutParams(-1, -2).apply {
+            topMargin = dp(6)
+            bottomMargin = dp(16)
+        }
+    }
+
+    val atalhos = listOf(
+        Triple("➤", "Enviar megas") {
+            navegarPara("Fila")
+        },
+        Triple("☰", "Fila") {
+            navegarPara("Fila")
+        },
+        Triple("▤", "Histórico") {
+            navegarPara("Concluídos")
+        },
+        Triple("◉", "Meta") {
+            Toast.makeText(
+                this,
+                "Meta atual: $metaGb GB",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    )
+
+    atalhos.forEach { (ico, nome, acao) ->
+
+        val col = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+
+            val circle = txt(ico, 17f, white, true).apply {
+                gravity = Gravity.CENTER
+                background = oval(
+                    Color.rgb(14, 65, 165),
+                    Color.rgb(45, 135, 255)
+                )
+            }
+
+            addView(circle, LinearLayout.LayoutParams(dp(52), dp(52)))
+
+            addView(
+                txt(nome, 11f, white, true).apply {
+                    gravity = Gravity.CENTER
+                    setPadding(0, dp(5), 0, 0)
+                }
+            )
+
+            setOnClickListener {
+                acao()
+            }
+        }
+
+        iconsRow.addView(
+            col,
+            LinearLayout.LayoutParams(0, -2, 1f)
+        )
+    }
+
+    content.addView(iconsRow)
+
+    // CABEÇALHO DOS CARTÕES SIM
+    val simHeader = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+
+        layoutParams = LinearLayout.LayoutParams(-1, -2).apply {
+            bottomMargin = dp(8)
+        }
+
+        addView(
+            txt("CARTÕES SIM", 13f, lightBlue, true),
+            LinearLayout.LayoutParams(0, -2, 1f)
+        )
+
+        addView(
+            pillBadge("+ Gerir SIMs", cyan, cardDark, cyan).apply {
+                setOnClickListener {
+                    navegarPara("SIMs")
+                }
+            }
+        )
+    }
+
+    content.addView(simHeader)
+
+    // CARTÕES SIM 1 E SIM 2
+    val simsRow = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+
+        layoutParams = LinearLayout.LayoutParams(-1, -2).apply {
+            bottomMargin = dp(6)
+        }
+    }
+
+    fun miniSimBox(num: Int, usados: Int): LinearLayout {
+
+        val ativo = simSelecionado == num
+
+        return cardBox(
+            if (ativo) Color.rgb(10, 38, 36) else cardDark,
+            if (ativo) green else borderBlue
+        ).apply {
+
+            val top = LinearLayout(this@MainActivity).apply {
+                orientation = LinearLayout.HORIZONTAL
+
+                addView(
+                    txt(
+                        "SIM $num",
+                        12f,
+                        if (ativo) green else lightBlue,
+                        true
+                    ),
+                    LinearLayout.LayoutParams(0, -2, 1f)
+                )
+
+                if (ativo) {
+                    addView(txt("●", 12f, green))
+                }
+            }
+
+            addView(top)
+
+            addView(txt("$usados/$limiteSim", 22f, white, true))
+
+            addView(
+                txt("transferências", 11f, lightBlue).apply {
+                    setPadding(0, 0, 0, dp(8))
+                }
+            )
+
+            val btns = LinearLayout(this@MainActivity).apply {
+                orientation = LinearLayout.HORIZONTAL
+            }
+
+            if (!ativo) {
+                btns.addView(
+                    smallActionBtn("Usar", green) {
+                        simSelecionado = num
+                        navegarPara("Início")
+                    },
+                    LinearLayout.LayoutParams(0, dp(30), 1f).apply {
+                        rightMargin = dp(4)
+                    }
+                )
+            }
+
+            btns.addView(
+                smallActionBtn("Reset", yellow) {
+                    if (num == 1) {
+                        sim1Usados = 0
+                    } else {
+                        sim2Usados = 0
+                    }
+
+                    navegarPara("Início")
+                },
+                LinearLayout.LayoutParams(0, dp(30), 1f)
+            )
+
+            addView(btns)
+        }
+    }
+
+    simsRow.addView(
+        miniSimBox(1, sim1Usados),
+        LinearLayout.LayoutParams(0, -2, 1f).apply {
+            rightMargin = dp(6)
+        }
+    )
+
+    simsRow.addView(
+        miniSimBox(2, sim2Usados),
+        LinearLayout.LayoutParams(0, -2, 1f).apply {
+            leftMargin = dp(6)
+        }
+    )
+
+    content.addView(simsRow)
+
+    content.addView(
+        txt("Contadores diários dos cartões SIM", 11f, lightBlue).apply {
+            setPadding(0, 0, 0, dp(10))
+        }
+    )
+
+    // FILA DE ESPERA
+    val filaBar = cardBox(cardDark, borderBlue).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+
+        addView(
+            txt(
+                "FILA DE ESPERA (${filaEspera.size})",
+                12f,
+                lightBlue,
+                true
+            ),
+            LinearLayout.LayoutParams(0, -2, 1f)
+        )
+
+        addView(
+            smallActionBtn(
+                if (filaPausada) "▶ Retomar" else "❚❚ Pausar",
+                yellow
+            ) {
+                filaPausada = !filaPausada
+                navegarPara("Início")
+            },
+            LinearLayout.LayoutParams(dp(95), dp(32))
+        )
+    }
+
+    content.addView(filaBar)
+
+    // ÚLTIMOS PEDIDOS
+    content.addView(
+        txt("Últimos pedidos", 15f, white, true).apply {
+            setPadding(0, dp(4), 0, dp(8))
+        }
+    )
+
+    concluidos
+        .filter { it.status == "Entregue" }
+        .take(3)
+        .forEach { item ->
+            content.addView(buildTransacaoRow(item))
+        }
 }
-content.addView(simHeader)
-// Cartões SIM 1 e SIM 2 Lado a Lado
-val simsRow = LinearLayout(this).apply {
-orientation = LinearLayout.HORIZONTAL
-layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(6) }
-}
-fun miniSimBox(num: Int, usados: Int): LinearLayout {
-val ativo = simSelecionado == num
-return cardBox(if (ativo) Color.rgb(10, 38, 36) else cardDark, if (ativo) green else borderBlue).apply {
-val top = LinearLayout(this@MainActivity).apply {
-orientation = LinearLayout.HORIZONTAL
-addView(txt("SIM $num", 12f, if (ativo) green else lightBlue, true), LinearLayout.LayoutParams(0, -2, 1f))
-if (ativo) addView(txt("●", 12f, green))
-}
-addView(top)
-addView(txt("$usados/$limiteSim", 22f, white, true))
-addView(txt("transferências", 11f, lightBlue).apply { setPadding(0, 0, 0, dp(8)) })
-val btns = LinearLayout(this@MainActivity).apply { orientation = LinearLayout.HORIZONTAL }
-if (!ativo) {
-btns.addView(smallActionBtn("Usar", green) {
-simSelecionado = num; navegarPara("Início")
-}, LinearLayout.LayoutParams(0, dp(30), 1f).apply { rightMargin = dp(4) })
-}
-btns.addView(smallActionBtn("Reset", yellow) {
-if (num == 1) sim1Usados = 0 else sim2Usados = 0
-navegarPara("Início")
-}, LinearLayout.LayoutParams(0, dp(30), 1f))
-addView(btns)
-}
-}
-simsRow.addView(miniSimBox(1, sim1Usados), LinearLayout.LayoutParams(0, -2, 1f).apply { rightMargin = dp(6) })
-simsRow.addView(miniSimBox(2, sim2Usados), LinearLayout.LayoutParams(0, -2, 1f).apply { leftMargin = dp(6) })
-content.addView(simsRow)
-content.addView(txt("Reset às 00:00 · faltam 9h 46m", 11f, lightBlue).apply {
-setPadding(0, 0, 0, dp(10))
-})
-// Barra FILA DE ESPERA + Retomar/Pausar
-val filaBar = cardBox(cardDark, borderBlue).apply {
-orientation = LinearLayout.HORIZONTAL
-gravity = Gravity.CENTER_VERTICAL
-addView(txt("FILA DE ESPERA (${filaEspera.size})", 12f, lightBlue, true), LinearLayout.LayoutParams(0, -2, 1f))
-addView(smallActionBtn(if (filaPausada) "▶ Retomar" else "❚❚ Pausar", yellow) {
-filaPausada = !filaPausada; navegarPara("Início")
-}, LinearLayout.LayoutParams(dp(95), dp(32)))
-}
-content.addView(filaBar)
-// Últimos Pedidos
-content.addView(txt("Últimos pedidos", 15f, white, true).apply { setPadding(0, dp(4), 0, dp(8)) })
-concluidos.take(3).forEach { item ->
-content.addView(buildTransacaoRow(item))
-}
-}
+
 // =====================================================================
 // TELA 2: FILA & EXECUTORES (IGUAL À ÚLTIMA IMAGEM GERADA)
 // =====================================================================
