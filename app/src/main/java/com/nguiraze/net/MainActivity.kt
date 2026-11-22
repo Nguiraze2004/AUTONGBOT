@@ -239,44 +239,70 @@ private fun telaInicio() {
 
     content.addView(header)
 
-    // CARTÃO PRINCIPAL
+    // CARTÃO PRINCIPAL    
     val summaryCard = cardBox(cardNavy, borderBlue).apply {
-        orientation = LinearLayout.HORIZONTAL
-        gravity = Gravity.CENTER_VERTICAL
+    orientation = LinearLayout.HORIZONTAL
+    gravity = Gravity.CENTER_VERTICAL
 
-        addView(
-            RingProgressView(
-                this@MainActivity,
-                progresso,
-                gbStr,
-                "GB vendidos"
-            ),
-            LinearLayout.LayoutParams(dp(140), dp(140))
+    // CÍRCULO DOS GB VENDIDOS
+    addView(
+        RingProgressView(
+            this@MainActivity,
+            progresso,
+            gbStr,
+            "GB VENDIDOS"
+        ),
+        LinearLayout.LayoutParams(dp(140), dp(140)).apply {
+            rightMargin = dp(6)
+        }
+    )
+
+    // CÍRCULO DOS PEDIDOS ATENDIDOS
+    val pedidosCircle = LinearLayout(this@MainActivity).apply {
+        orientation = LinearLayout.VERTICAL
+        gravity = Gravity.CENTER
+
+        background = oval(
+            Color.rgb(8, 48, 39),
+            green
         )
 
-        // PEDIDOS ATENDIDOS
-        val rightStats = LinearLayout(this@MainActivity).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(14), 0, 0, 0)
-
-            addView(
-                txt("$totalConcluidas", 30f, green, true)
+        addView(
+            txt(
+                "$totalConcluidas",
+                25f,
+                white,
+                true
             )
+        )
 
-            addView(
-                txt("PEDIDOS", 12f, white, true)
+        addView(
+            txt(
+                "PEDIDOS",
+                10f,
+                green,
+                true
             )
+        )
 
-            addView(
-                txt("ATENDIDOS", 12f, white, true)
+        addView(
+            txt(
+                "ATENDIDOS",
+                10f,
+                green,
+                true
             )
-        }
-
-        addView(rightStats, LinearLayout.LayoutParams(0, -2, 1f))
+        )
     }
 
-    content.addView(summaryCard)
+    addView(
+        pedidosCircle,
+        LinearLayout.LayoutParams(dp(140), dp(140))
+    )
+}
+
+content.addView(summaryCard)
+
 
     // ATALHOS
     val iconsRow = LinearLayout(this).apply {
