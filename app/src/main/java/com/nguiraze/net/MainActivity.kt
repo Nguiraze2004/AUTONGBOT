@@ -159,6 +159,7 @@ private fun navegarPara(aba: String) {
 // TELA 1: INÍCIO (DASHBOARD PRINCIPAL)  
 // =====================================================================  
     
+
 private fun telaInicio() {
 
     // CALCULAR DADOS DOS REGISTOS ENTREGUES
@@ -173,10 +174,6 @@ private fun telaInicio() {
     }
 
     val gbCalculados = totalMegas / 1024.0
-
-    val faturamentoHoje = entreguesHoje.sumBy {
-        it.valorMT
-    }
 
     val progresso = if (metaGb > 0) {
         (gbCalculados / metaGb.toDouble()).toFloat().coerceIn(0f, 1f)
@@ -257,23 +254,22 @@ private fun telaInicio() {
             LinearLayout.LayoutParams(dp(140), dp(140))
         )
 
+        // PEDIDOS ATENDIDOS
         val rightStats = LinearLayout(this@MainActivity).apply {
             orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(14), 0, 0, 0)
 
-            addView(txt("$totalConcluidas", 28f, white, true))
-            addView(txt("transferências", 13f, white))
-
             addView(
-                txt("Concluídos hoje", 12f, green, true).apply {
-                    setPadding(0, 0, 0, dp(10))
-                }
+                txt("$totalConcluidas", 30f, green, true)
             )
 
-            addView(txt("Meta: $metaGb GB", 12f, lightBlue))
+            addView(
+                txt("PEDIDOS", 12f, white, true)
+            )
 
             addView(
-                txt("Saldo hoje: $faturamentoHoje MT", 12f, white, true)
+                txt("ATENDIDOS", 12f, white, true)
             )
         }
 
@@ -515,6 +511,7 @@ private fun telaInicio() {
             content.addView(buildTransacaoRow(item))
         }
 }
+          
 
 // =====================================================================
 // TELA 2: FILA & EXECUTORES (IGUAL À ÚLTIMA IMAGEM GERADA)
