@@ -296,6 +296,9 @@ addView(
         leftMargin = dp(20)
     }
 )
+}
+
+content.addView(summaryCard)
 
 content.addView(summaryCard)
 
