@@ -257,49 +257,45 @@ private fun telaInicio() {
         }
     )
 
-    // CÍRCULO DOS PEDIDOS ATENDIDOS
-    val pedidosCircle = LinearLayout(this@MainActivity).apply {
-        orientation = LinearLayout.VERTICAL
-        gravity = Gravity.CENTER
+    
+// CÍRCULO DOS PEDIDOS ATENDIDOS
+val pedidosCircle = LinearLayout(this@MainActivity).apply {
+    orientation = LinearLayout.VERTICAL
+    gravity = Gravity.CENTER
 
-        background = oval(
-            Color.rgb(8, 48, 39),
-            green
-        )
-
-        addView(
-            txt(
-                "$totalConcluidas",
-                25f,
-                white,
-                true
-            )
-        )
-
-        addView(
-            txt(
-                "PEDIDOS",
-                10f,
-                green,
-                true
-            )
-        )
-
-        addView(
-            txt(
-                "ATENDIDOS",
-                10f,
-                green,
-                true
-            )
-        )
-    }
+    background = oval(
+        Color.rgb(8, 48, 39),
+        green
+    )
 
     addView(
-        pedidosCircle,
-        LinearLayout.LayoutParams(dp(140), dp(140))
+        txt("$totalConcluidas", 25f, white, true).apply {
+            gravity = Gravity.CENTER
+        },
+        LinearLayout.LayoutParams(-1, -2)
+    )
+
+    addView(
+        txt("TOTAL", 10f, green, true).apply {
+            gravity = Gravity.CENTER
+        },
+        LinearLayout.LayoutParams(-1, -2)
+    )
+
+    addView(
+        txt("ATENDIDOS", 10f, green, true).apply {
+            gravity = Gravity.CENTER
+        },
+        LinearLayout.LayoutParams(-1, -2)
     )
 }
+
+addView(
+    pedidosCircle,
+    LinearLayout.LayoutParams(dp(140), dp(140))
+)
+
+    
 
 content.addView(summaryCard)
 
