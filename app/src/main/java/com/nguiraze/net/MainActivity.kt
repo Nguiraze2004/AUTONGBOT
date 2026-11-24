@@ -79,39 +79,41 @@ private val white = Color.WHITE
 private val lightBlue = Color.rgb(151, 161, 177)
 
 
-    val scroll = ScrollView(this).apply { clipToPadding = false }  
-    content = LinearLayout(this).apply {  
-        orientation = LinearLayout.VERTICAL  
-        setPadding(dp(14), dp(14), dp(14), dp(24))  
-    }  
-    scroll.addView(content)  
-    root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))  
+    override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
 
-    navBar = LinearLayout(this).apply {  
-        orientation = LinearLayout.HORIZONTAL  
-        gravity = Gravity.CENTER  
-        setBackgroundColor(Color.rgb(6, 16, 40))  
-        setPadding(dp(4), dp(6), dp(4), dp(6))  
-    }  
-    root.addView(navBar, LinearLayout.LayoutParams(-1, dp(64)))  
+    window.statusBarColor = bgTop
+    window.navigationBarColor = bgBot
 
-    setContentView(root)  
-    navegarPara("Início")  
-}  
+    val root = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        setBackgroundColor(bgTop)
+    }
 
-private fun navegarPara(aba: String) {  
-    abaAtual = aba  
-    renderizarBarraInferior()  
-    content.removeAllViews()  
+    val scroll = ScrollView(this).apply {
+        clipToPadding = false
+    }
 
-    when (aba) {  
-        "Início" -> telaInicio()  
-        "Fila" -> telaFilaExecutores()  
-        "Concluídos" -> telaConcluidos()  
-        "SIMs" -> telaSims()  
-        "Config" -> telaConfig()  
-    }  
-}  
+    content = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        setPadding(dp(14), dp(14), dp(14), dp(24))
+    }
+
+    scroll.addView(content)
+    root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
+
+    navBar = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER
+        setBackgroundColor(Color.rgb(6, 16, 40))
+        setPadding(dp(4), dp(6), dp(4), dp(6))
+    }
+
+    root.addView(navBar, LinearLayout.LayoutParams(-1, dp(64)))
+
+    setContentView(root)
+    navegarPara("Início")
+    }
 
 // =====================================================================  
 // TELA 1: INÍCIO (DASHBOARD PRINCIPAL)  
