@@ -129,12 +129,10 @@ class MainActivity : Activity() {
             setPadding(dp(14), dp(14), dp(14), dp(24))
         }
 
-        scroll.addView(
-            content,
-            ScrollView.LayoutParams(
-                ScrollView.LayoutParams.MATCH_PARENT,
-                ScrollView.LayoutParams.WRAP_CONTENT
-            )
+        ViewGroup.LayoutParams(
+    ViewGroup.LayoutParams.MATCH_PARENT,
+    ViewGroup.LayoutParams.WRAP_CONTENT
+)
         )
 
         root.addView(
