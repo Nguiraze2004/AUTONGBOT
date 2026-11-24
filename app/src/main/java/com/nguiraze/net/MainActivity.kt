@@ -58,68 +58,26 @@ val simTag: String
 // =========================================================================
 class MainActivity : Activity() {
 
-// Paleta de Cores (Dark Navy & Cyan)  
-private val bgTop = Color.rgb(5, 14, 34)  
-private val bgBot = Color.rgb(4, 20, 52)  
-private val cardNavy = Color.rgb(9, 28, 66)  
-private val cardDark = Color.rgb(10, 22, 46)  
-private val borderBlue = Color.rgb(24, 72, 148)  
-private val cyan = Color.rgb(0, 215, 255)  
-private val green = Color.rgb(0, 220, 125)  
-private val greenBg = Color.rgb(12, 54, 48)  
-private val yellow = Color.rgb(255, 193, 7)  
-private val red = Color.rgb(240, 75, 85)  
-private val white = Color.WHITE  
-private val lightBlue = Color.rgb(155, 185, 225)  
 
-private lateinit var content: LinearLayout  
-private lateinit var navBar: LinearLayout  
-private var abaAtual = "Início"
-private var filtroConclusao = "Todos"
+// PALETA AUTOMATION — NGUIRAZE NET
+private val bgTop = Color.rgb(5, 9, 16)
+private val bgBot = Color.rgb(5, 9, 16)
 
-// Estado Operacional  
-private var filaPausada = false  
-private var gbVendidosHoje = 1980.0  
-private var metaGb = 100  
-private var saldoHojeMT = 0  
-private var simSelecionado = 2  
-private var sim1Usados = 0  
-private var sim2Usados = 0  
-private val limiteSim = 10  
+private val cardNavy = Color.rgb(14, 20, 30)
+private val cardDark = Color.rgb(12, 18, 27)
 
-// Dados em Memória  
-private var pedidoEmCurso: PedidoFila? = null
+private val borderBlue = Color.rgb(29, 40, 55)
 
-private val filaEspera = mutableListOf<PedidoFila>()
+private val cyan = Color.rgb(65, 133, 245)
+private val green = Color.rgb(48, 198, 128)
+private val greenBg = Color.rgb(13, 49, 39)
 
-private val executores = mutableListOf(
-    AgenteExecutor(
-        1,
-        "Este aparelho",
-        "ES",
-        false,
-        0,
-        "USSD não ligado"
-    )
-)
+private val yellow = Color.rgb(244, 185, 55)
+private val red = Color.rgb(235, 20, 45)
 
-private val concluidos = mutableListOf<TransacaoConcluida>()
-   
+private val white = Color.WHITE
+private val lightBlue = Color.rgb(151, 161, 177)
 
-private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()  
-
-override fun onCreate(savedInstanceState: Bundle?) {  
-    super.onCreate(savedInstanceState)  
-    window.statusBarColor = bgTop  
-    window.navigationBarColor = Color.rgb(6, 16, 40)  
-
-    val root = LinearLayout(this).apply {  
-        orientation = LinearLayout.VERTICAL  
-        background = GradientDrawable(  
-            GradientDrawable.Orientation.TOP_BOTTOM,  
-            intArrayOf(bgTop, bgBot)  
-        )  
-    }  
 
     val scroll = ScrollView(this).apply { clipToPadding = false }  
     content = LinearLayout(this).apply {  
