@@ -7,6 +7,8 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Typeface
+import android.widget.EditText
+import android.text.InputType
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.view.Gravity
