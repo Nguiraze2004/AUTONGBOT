@@ -978,93 +978,321 @@ private fun telaFilaExecutores() {
         }
     }
 
-    // ============================================================
-    // 8. TELA DE GESTÃO DOS SIMs
-    // ============================================================
+// ============================================================
+// 8. TELA DE GESTÃO DOS SIMs
+// ============================================================
 
-    private fun telaSims() {
-        content.addView(txt("Gestão de SIMs", 19f, white, true))
+private fun telaSims() {
 
-        content.addView(
-            txt("Reset diário às 00:00", 12f, lightBlue).apply {
-                setPadding(0, 0, 0, dp(12))
+    // Cabeçalho
+    content.addView(
+        txt("Gestão de SIMs", 21f, white, true)
+    )
+
+    content.addView(
+        txt("Gerir cartões, transferências e configurações", 12f, lightBlue)
+            .apply {
+                setPadding(0, 0, 0, dp(14))
+            }
+    )
+
+    val usadosAtivo =
+        if (simSelecionado == 1) sim1Usados else sim2Usados
+
+    val restantes = (limiteSim - usadosAtivo).coerceAtLeast(0)
+
+    // ========================================================
+    // CARTÃO SIM ATIVO
+    // ========================================================
+
+    val ativoBox = cardBox(
+        Color.rgb(10, 38, 36),
+        green
+    ).apply {
+
+        addView(
+            txt(
+                "SIM $simSelecionado · ACTIVO",
+                18f,
+                green,
+                true
+            )
+        )
+
+        addView(
+            txt(
+                if (simSelecionado == 1)
+                    "VODACOM · Slot 1"
+                else
+                    "MOVITEL · Slot 2",
+                13f,
+                lightBlue
+            )
+        )
+
+        addView(
+            txt(
+                "Número do cartão",
+                12f,
+                lightBlue
+            ).apply {
+                setPadding(0, dp(12), 0, dp(2))
             }
         )
 
-        val sims = listOf(
-            Triple(1, "VODACOM · Slot 1", sim1Usados),
-            Triple(2, "SIM 2 · Slot 2", sim2Usados)
+        addView(
+            txt(
+                "Número não configurado",
+                15f,
+                white,
+                true
+            )
         )
 
-        sims.forEach { sim ->
-            val numero = sim.first
-            val descricao = sim.second
-            val usados = sim.third
-            val ativo = simSelecionado == numero
-
-            val box = cardBox(
-                if (ativo) Color.rgb(10, 38, 36) else cardDark,
-                if (ativo) green else borderBlue
+        addView(
+            txt(
+                "Transferências de hoje",
+                12f,
+                lightBlue
             ).apply {
-                addView(
-                    txt(
-                        "SIM $numero ${if (ativo) "· ACTIVO" else ""}",
-                        16f,
-                        if (ativo) green else white,
-                        true
-                    )
-                )
-                addView(txt(descricao, 12f, lightBlue))
-                addView(
-                    txt(
-                        "Transferências: $usados / $limiteSim",
-                        14f,
-                        white,
-                        true
-                    ).apply {
-                        setPadding(0, dp(6), 0, dp(8))
-                    }
-                )
+                setPadding(0, dp(12), 0, dp(4))
+            }
+        )
 
-                if (!ativo) {
-                    addView(
-                        smallActionBtn("Usar este SIM", green) {
-                            simSelecionado = numero
-                            guardarContadores()
-                            navegarPara("SIMs")
-                        },
-                        LinearLayout.LayoutParams(-1, dp(36))
-                    )
+        addView(
+            txt(
+                "$usadosAtivo / $limiteSim",
+                25f,
+                white,
+                true
+            )
+        )
+
+        addView(
+            txt(
+                "Restam $restantes transferências",
+                13f,
+                green,
+                true
+            ).apply {
+                setPadding(0, dp(4), 0, dp(12))
+            }
+        )
+
+        addView(
+            smallActionBtn("Actualizar SIM activo", cyan) {
+                navegarPara("SIMs")
+            },
+            LinearLayout.LayoutParams(-1, dp(40))
+        )
+    }
+
+    content.addView(ativoBox)
+
+    // ========================================================
+    // SEGUNDO SIM
+    // ========================================================
+
+    content.addView(
+        txt("OUTRO CARTÃO SIM", 13f, lightBlue, true)
+            .apply {
+                setPadding(0, dp(16), 0, dp(8))
+            }
+    )
+
+    val outroNumero = if (simSelecionado == 1) 2 else 1
+    val outrosUsados = if (outroNumero == 1) sim1Usados else sim2Usados
+    val outroAtivo = simSelecionado == outroNumero
+
+    val outroBox = cardBox(
+        cardDark,
+        borderBlue
+    ).apply {
+
+        addView(
+            txt(
+                "SIM $outroNumero",
+                17f,
+                white,
+                true
+            )
+        )
+
+        addView(
+            txt(
+                if (outroNumero == 1)
+                    "VODACOM · Slot 1"
+                else
+                    "MOVITEL · Slot 2",
+                13f,
+                lightBlue
+            )
+        )
+
+        addView(
+            txt(
+                "Transferências: $outrosUsados / $limiteSim",
+                14f,
+                white,
+                true
+            ).apply {
+                setPadding(0, dp(8), 0, dp(10))
+            }
+        )
+
+        if (!outroAtivo) {
+            addView(
+                smallActionBtn("Usar este SIM", green) {
+                    simSelecionado = outroNumero
+                    guardarContadores()
+                    navegarPara("SIMs")
+                },
+                LinearLayout.LayoutParams(-1, dp(40))
+            )
+        }
+
+        addView(
+            smallActionBtn("Reiniciar contador", yellow) {
+                if (outroNumero == 1) {
+                    sim1Usados = 0
+                } else {
+                    sim2Usados = 0
                 }
 
-                addView(
-                    smallActionBtn("Reiniciar contador", yellow) {
-                        if (numero == 1) sim1Usados = 0 else sim2Usados = 0
-                        guardarContadores()
-                        navegarPara("SIMs")
-                    },
-                    LinearLayout.LayoutParams(-1, dp(36)).apply {
-                        topMargin = dp(6)
-                    }
-                )
-            }
-
-            content.addView(box)
-        }
-
-        val usadosAtivo = if (simSelecionado == 1) sim1Usados else sim2Usados
-        val aviso = if (usadosAtivo >= limiteSim) {
-            "Limite atingido. Seleccione o outro SIM para continuar."
-        } else {
-            "SIM seleccionado: $simSelecionado · Restam ${limiteSim - usadosAtivo} transferências."
-        }
-
-        content.addView(
-            txt(aviso, 12f, if (usadosAtivo >= limiteSim) yellow else lightBlue).apply {
-                setPadding(0, dp(8), 0, 0)
+                guardarContadores()
+                navegarPara("SIMs")
+            },
+            LinearLayout.LayoutParams(-1, dp(40)).apply {
+                topMargin = dp(7)
             }
         )
     }
+
+    content.addView(outroBox)
+
+    // ========================================================
+    // CONFIGURAÇÕES
+    // ========================================================
+
+    content.addView(
+        txt("CONFIGURAÇÕES", 13f, lightBlue, true)
+            .apply {
+                setPadding(0, dp(16), 0, dp(8))
+            }
+    )
+
+    val configBox = cardBox(
+        cardDark,
+        borderBlue
+    ).apply {
+
+        addView(
+            txt("Limite diário por SIM", 15f, white, true)
+        )
+
+        addView(
+            txt(
+                "$limiteSim transferências por dia",
+                13f,
+                lightBlue
+            ).apply {
+                setPadding(0, dp(4), 0, dp(12))
+            }
+        )
+
+        addView(
+            txt("Sobra automática de megabytes", 15f, white, true)
+        )
+
+        addView(
+            txt(
+                "Configuração ainda não activada",
+                13f,
+                yellow
+            ).apply {
+                setPadding(0, dp(4), 0, dp(12))
+            }
+        )
+
+        addView(
+            txt("Reinício dos contadores", 15f, white, true)
+        )
+
+        addView(
+            txt(
+                "Todos os dias às 00:00",
+                13f,
+                lightBlue
+            ).apply {
+                setPadding(0, dp(4), 0, 0)
+            }
+        )
+    }
+
+    content.addView(configBox)
+
+    // ========================================================
+    // DIAGNÓSTICO
+    // ========================================================
+
+    content.addView(
+        txt("DIAGNÓSTICO", 13f, lightBlue, true)
+            .apply {
+                setPadding(0, dp(16), 0, dp(8))
+            }
+    )
+
+    val diagnosticoBox = cardBox(
+        cardDark,
+        borderBlue
+    ).apply {
+
+        addView(
+            txt("Estado do SIM", 15f, white, true)
+        )
+
+        addView(
+            txt(
+                "SIM $simSelecionado seleccionado",
+                13f,
+                green
+            ).apply {
+                setPadding(0, dp(4), 0, dp(8))
+            }
+        )
+
+        addView(
+            txt("Contador local", 15f, white, true)
+        )
+
+        addView(
+            txt(
+                "Dados guardados no aplicativo",
+                13f,
+                lightBlue
+            ).apply {
+                setPadding(0, dp(4), 0, 0)
+            }
+        )
+    }
+
+    content.addView(diagnosticoBox)
+
+    // Aviso final
+    content.addView(
+        txt(
+            if (usadosAtivo >= limiteSim) {
+                "Limite atingido. Seleccione o outro SIM para continuar."
+            } else {
+                "SIM seleccionado: $simSelecionado · Restam $restantes transferências."
+            },
+            12f,
+            if (usadosAtivo >= limiteSim) yellow else lightBlue
+        ).apply {
+            setPadding(0, dp(12), 0, dp(16))
+        }
+    )
+}
 
     // ============================================================
     // 9. CONFIGURAÇÕES
