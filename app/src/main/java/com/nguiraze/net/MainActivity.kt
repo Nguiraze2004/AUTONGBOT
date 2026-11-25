@@ -441,7 +441,6 @@ class MainActivity : Activity() {
             }
         )
 
-        
 
         content.addView(
             txt("Contadores diários dos cartões SIM", 11f, lightBlue).apply {
