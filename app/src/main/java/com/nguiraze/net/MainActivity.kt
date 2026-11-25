@@ -538,7 +538,7 @@ private fun telaFilaExecutores() {
         setHintTextColor(lightBlue)
         setTextColor(white)
         textSize = 13f
-        isSingleLine = true
+        setSingleLine(true)
         setPadding(dp(16), 0, dp(12), 0)
         background = roundRect(cardDark, borderBlue, 28)
     }
