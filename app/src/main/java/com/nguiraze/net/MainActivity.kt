@@ -1232,15 +1232,30 @@ private fun telaSims() {
     content.addView(configBox)
 
     // ========================================================
-    // DIAGNÓSTICO
+    // DIAGNÓSTICO USSD
     // ========================================================
 
     content.addView(
-        txt("DIAGNÓSTICO", 13f, lightBlue, true)
+        txt("DIAGNÓSTICO USSD", 13f, lightBlue, true)
             .apply {
                 setPadding(0, dp(16), 0, dp(8))
             }
     )
+
+    val dadosUssd = getSharedPreferences(
+        "ussd_debug",
+        Context.MODE_PRIVATE
+    )
+
+    val ultimaLeitura = dadosUssd.getString(
+        "ultima_leitura",
+        "Ainda não foi capturado nenhum texto USSD."
+    ) ?: "Sem leitura"
+
+    val ultimaJanela = dadosUssd.getString(
+        "ultima_janela",
+        "Nenhuma janela detectada"
+    ) ?: "Desconhecida"
 
     val diagnosticoBox = cardBox(
         cardDark,
@@ -1248,35 +1263,57 @@ private fun telaSims() {
     ).apply {
 
         addView(
-            txt("Estado do SIM", 15f, white, true)
+            txt("Estado do serviço", 14f, white, true)
         )
 
         addView(
             txt(
-                "SIM $simSelecionado seleccionado",
-                13f,
+                "Acessibilidade activada",
+                12f,
                 green
             ).apply {
-                setPadding(0, dp(4), 0, dp(8))
+                setPadding(0, dp(5), 0, dp(10))
             }
         )
 
         addView(
-            txt("Contador local", 15f, white, true)
+            txt("Aplicação detectada", 13f, white, true)
         )
 
         addView(
             txt(
-                "Dados guardados no aplicativo",
-                13f,
+                ultimaJanela,
+                11f,
+                cyan
+            ).apply {
+                setPadding(0, dp(4), 0, dp(10))
+            }
+        )
+
+        addView(
+            txt("Último texto capturado", 13f, white, true)
+        )
+
+        addView(
+            txt(
+                ultimaLeitura,
+                12f,
                 lightBlue
             ).apply {
-                setPadding(0, dp(4), 0, 0)
+                setPadding(0, dp(6), 0, dp(12))
             }
+        )
+
+        addView(
+            smallActionBtn("↻ Actualizar leitura", cyan) {
+                navegarPara("SIMs")
+            },
+            LinearLayout.LayoutParams(-1, dp(40))
         )
     }
 
     content.addView(diagnosticoBox)
+
 
     // Aviso final
     content.addView(
