@@ -95,6 +95,10 @@ private var simSelecionado = 1
 private var sim1Usados = 0
 private var sim2Usados = 0
 private var limiteSim = 10
+    
+// NÚMEROS DOS CARTÕES SIM
+private var sim1Numero = ""
+private var sim2Numero = ""
 
 // SOBRA AUTOMÁTICA
 private var sobraAutomaticaAtiva = false
