@@ -7,8 +7,6 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Typeface
-import android.widget.EditText
-import android.text.InputType
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.view.Gravity
@@ -91,26 +89,14 @@ class MainActivity : Activity() {
 
     // -------------------- CONTROLO DOS SIMs --------------------
 
-private var simSelecionado = 1
-private var sim1Usados = 0
-private var sim2Usados = 0
-private var limiteSim = 10
-    
-// NÚMEROS DOS CARTÕES SIM
-private var sim1Numero = ""
-private var sim2Numero = ""
+    private var simSelecionado = 1
+    private var sim1Usados = 0
+    private var sim2Usados = 0
+    private val limiteSim = 10
 
-// SOBRA AUTOMÁTICA
-private var sobraAutomaticaAtiva = false
-private var transferenciasAntesSobra = 9
-private var numeroSobra = ""
-
-private var filtroConclusao = "Todos"
-private var filaPausada = false
-private var metaGb = 10
-
-// SOBRA AUTOMÁTICA
-
+    private var filtroConclusao = "Todos"
+    private var filaPausada = false
+    private var metaGb = 10
 
     private val preferencias by lazy {
         getSharedPreferences("nguiraze_net_dados", Context.MODE_PRIVATE)
@@ -453,6 +439,7 @@ private var metaGb = 10
             }
         )
 
+        content.addView(simsRow)
 
         content.addView(
             txt("Contadores diários dos cartões SIM", 11f, lightBlue).apply {
@@ -514,326 +501,190 @@ private var metaGb = 10
     // 6. TELA FILA E EXECUTORES
     // ============================================================
 
-    
-private fun telaFilaExecutores() {
-
-    // CABEÇALHO
-    val topBar = LinearLayout(this).apply {
-        orientation = LinearLayout.HORIZONTAL
-        gravity = Gravity.CENTER_VERTICAL
-    }
-
-    addViewHeader@ run {
-        val voltar = txt("‹", 28f, white, true).apply {
-            setPadding(0, 0, dp(12), 0)
-            setOnClickListener { navegarPara("Início") }
-        }
-        topBar.addView(voltar)
-
-        val titulo = LinearLayout(this@MainActivity).apply {
-            orientation = LinearLayout.VERTICAL
-            addView(txt("Painel do Executor", 17f, white, true))
-            addView(txt("Este aparelho · Painel local", 11f, lightBlue))
-        }
-
-        topBar.addView(titulo, LinearLayout.LayoutParams(0, -2, 1f))
-        topBar.addView(txt("▣", 20f, lightBlue))
-        topBar.addView(txt("  $", 20f, yellow))
-    }
-
-    content.addView(topBar)
-
-    // PESQUISA
-    val pesquisa = EditText(this).apply {
-        hint = "⌕  Buscar por número ou nome do Agente..."
-        setHintTextColor(lightBlue)
-        setTextColor(white)
-        textSize = 13f
-        setSingleLine(true)
-        setPadding(dp(16), 0, dp(12), 0)
-        background = roundRect(cardDark, borderBlue, 28)
-    }
-
-    content.addView(
-        pesquisa,
-        LinearLayout.LayoutParams(-1, dp(46)).apply {
-            topMargin = dp(14)
-            bottomMargin = dp(12)
-        }
-    )
-
-    // INDICADORES
-    val indicadores = LinearLayout(this).apply {
-        orientation = LinearLayout.HORIZONTAL
-    }
-
-    fun indicador(valor: String, descricao: String, cor: Int): LinearLayout {
-        return cardBox(cardDark, borderBlue).apply {
-            gravity = Gravity.CENTER
-            addView(txt(valor, 22f, cor, true))
-            addView(txt(descricao, 10f, lightBlue))
-        }
-    }
-
-    val online = executores.count { it.online }
-
-    val cards = listOf(
-        indicador("${online}/${executores.size}", "online", green),
-        indicador("${if (pedidoEmCurso != null) 1 else 0}", "em curso", yellow),
-        indicador("${filaEspera.size}", "em espera", cyan),
-        indicador("0", "bloqueados", red)
-    )
-
-    cards.forEachIndexed { index, card ->
-        indicadores.addView(
-            card,
-            LinearLayout.LayoutParams(0, dp(90), 1f).apply {
-                if (index != 0) leftMargin = dp(4)
-                if (index != 3) rightMargin = dp(4)
+    private fun telaFilaExecutores() {
+        val topBar = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            layoutParams = LinearLayout.LayoutParams(-1, -2).apply {
+                bottomMargin = dp(10)
             }
-        )
-    }
 
-    content.addView(indicadores)
-
-    // TÍTULO ENVIO MANUAL
-    content.addView(
-        txt("▶  ENVIO MANUAL", 11f, lightBlue, true).apply {
-            setPadding(0, dp(12), 0, dp(8))
-        }
-    )
-
-    // CAMPOS DE ENTRADA
-    val numeroCampo = EditText(this).apply {
-        hint = "▣  Número do cliente"
-        setHintTextColor(lightBlue)
-        setTextColor(white)
-        textSize = 14f
-        inputType = InputType.TYPE_CLASS_PHONE
-        isSingleLine = true
-        setPadding(dp(16), 0, dp(12), 0)
-        background = roundRect(Color.BLACK, borderBlue, 18)
-    }
-
-    val megasCampo = EditText(this).apply {
-        hint = "⌁  Megabytes"
-        setHintTextColor(lightBlue)
-        setTextColor(white)
-        textSize = 14f
-        inputType = InputType.TYPE_CLASS_NUMBER
-        isSingleLine = true
-        setPadding(dp(16), 0, dp(12), 0)
-        background = roundRect(Color.BLACK, borderBlue, 18)
-    }
-
-    // CARTÃO DE ENVIO
-    val envioCard = cardBox(cardDark, borderBlue)
-
-    envioCard.addView(
-        txt("➤   Envio manual", 14f, white, true)
-    )
-
-    envioCard.addView(
-        txt(
-            "Preencha os dados para registar um pedido.",
-            11f,
-            lightBlue
-        ).apply {
-            setPadding(0, dp(4), 0, dp(12))
-        }
-    )
-
-    envioCard.addView(
-        txt("PACOTES RÁPIDOS", 10f, lightBlue, true)
-    )
-
-    val pacotes = LinearLayout(this).apply {
-        orientation = LinearLayout.HORIZONTAL
-        gravity = Gravity.CENTER_VERTICAL
-    }
-
-    val pacote100 = TextView(this).apply {
-        text = "100MB\n10 MT"
-        textSize = 12f
-        setTextColor(green)
-        setTypeface(null, Typeface.BOLD)
-        gravity = Gravity.CENTER
-        background = roundRect(Color.BLACK, green, 14)
-        setPadding(dp(18), dp(8), dp(18), dp(8))
-
-        setOnClickListener {
-            megasCampo.setText("100")
-        }
-    }
-
-    pacotes.addView(pacote100)
-    pacotes.addView(
-        txt("  ›", 22f, white).apply {
-            setPadding(dp(12), 0, 0, 0)
-        }
-    )
-
-    envioCard.addView(
-        pacotes,
-        LinearLayout.LayoutParams(-1, -2).apply {
-            topMargin = dp(8)
-            bottomMargin = dp(14)
-        }
-    )
-
-    envioCard.addView(
-        View(this).apply {
-            setBackgroundColor(borderBlue)
-        },
-        LinearLayout.LayoutParams(-1, dp(1)).apply {
-            bottomMargin = dp(14)
-        }
-    )
-
-    envioCard.addView(
-        numeroCampo,
-        LinearLayout.LayoutParams(-1, dp(46)).apply {
-            bottomMargin = dp(14)
-        }
-    )
-
-    envioCard.addView(
-        megasCampo,
-        LinearLayout.LayoutParams(-1, dp(46)).apply {
-            bottomMargin = dp(6)
-        }
-    )
-
-    envioCard.addView(
-        txt(
-            "100MB a 10GB. Acima disso, 20, 30, 40 ou 50GB.",
-            10f,
-            lightBlue
-        ).apply {
-            setPadding(dp(4), dp(4), 0, dp(12))
-        }
-    )
-
-    val despachar = smallActionBtn("➤  Despachar para um Agente", green) {
-
-        val numero = numeroCampo.text.toString().trim()
-        val megas = megasCampo.text.toString().trim().toIntOrNull()
-
-        if (numero.isEmpty()) {
-            Toast.makeText(this, "Introduza o número do cliente.", Toast.LENGTH_SHORT).show()
-        } else if (numero.length < 9) {
-            Toast.makeText(this, "Verifique o número do cliente.", Toast.LENGTH_SHORT).show()
-        } else if (megas == null || megas <= 0) {
-            Toast.makeText(this, "Introduza uma quantidade válida de MB.", Toast.LENGTH_SHORT).show()
-        } else {
-            val hora = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
-
-            filaEspera.add(
-                PedidoFila(
-                    System.currentTimeMillis().toString(),
-                    numero,
-                    megas,
-                    hora
-                )
-            )
-
-            Toast.makeText(
-                this,
-                "Pedido registado na fila. Aguardando integração com a operadora.",
-                Toast.LENGTH_LONG
-            ).show()
-
-            navegarPara("Fila")
-        }
-    }
-
-    envioCard.addView(
-        despachar,
-        LinearLayout.LayoutParams(-1, dp(42))
-    )
-
-    content.addView(envioCard)
-
-    // EXECUTORES
-    content.addView(
-        txt("▣  EXECUTORES (${executores.size})", 11f, lightBlue, true).apply {
-            setPadding(0, dp(14), 0, dp(8))
-        }
-    )
-
-    if (executores.isEmpty()) {
-        val aparelho = cardBox(cardDark, borderBlue).apply {
-            addView(txt("ES   Este aparelho", 13f, white, true))
-            addView(txt("Dispositivo local", 10f, lightBlue))
             addView(
-                txt("● USSD não ligado", 11f, yellow).apply {
-                    setPadding(0, dp(8), 0, dp(4))
+                txt("‹", 24f, white, true).apply {
+                    setPadding(0, 0, dp(12), 0)
+                    setOnClickListener { navegarPara("Início") }
                 }
             )
-            addView(txt("0 vendas confirmadas", 11f, lightBlue))
-        }
-        content.addView(aparelho)
-    } else {
-        executores.forEach { agente ->
-            val agenteCard = cardBox(cardDark, borderBlue).apply {
-                addView(txt("${agente.sigla}   ${agente.nome}", 14f, white, true))
-                addView(txt("#${agente.id}", 10f, lightBlue))
+
+            val titleCol = LinearLayout(this@MainActivity).apply {
+                orientation = LinearLayout.VERTICAL
+
+                addView(txt("Fila & Executores", 18f, white, true))
+
+                val pendentes = filaEspera.size +
+                    (if (pedidoEmCurso != null) 1 else 0)
+                val ativos = executores.count { it.online }
+
                 addView(
                     txt(
-                        if (agente.online) "● Online" else "● Offline",
+                        "$pendentes pedidos pendentes · $ativos executores ativos",
+                        11f,
+                        lightBlue
+                    )
+                )
+            }
+
+            addView(titleCol, LinearLayout.LayoutParams(0, -2, 1f))
+
+            addView(
+                pillBadge(
+                    if (filaPausada) "● Pausada" else "● Ativa",
+                    if (filaPausada) yellow else green,
+                    greenBg,
+                    borderBlue
+                )
+            )
+        }
+
+        content.addView(topBar)
+
+        val controlRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(-1, -2).apply {
+                bottomMargin = dp(12)
+            }
+
+            addView(
+                smallActionBtn(
+                    if (filaPausada) "▶ Retomar Fila" else "❚❚ Pausar Fila",
+                    yellow
+                ) {
+                    filaPausada = !filaPausada
+                    navegarPara("Fila")
+                },
+                LinearLayout.LayoutParams(0, dp(38), 1f).apply {
+                    rightMargin = dp(6)
+                }
+            )
+
+            addView(
+                smallActionBtn("🗑 Limpar", red) {
+                    filaEspera.clear()
+                    navegarPara("Fila")
+                },
+                LinearLayout.LayoutParams(0, dp(38), 1f).apply {
+                    leftMargin = dp(6)
+                }
+            )
+        }
+
+        content.addView(controlRow)
+
+        content.addView(
+            txt("EXECUTORES (${executores.size})", 12f, lightBlue, true).apply {
+                setPadding(0, dp(4), 0, dp(8))
+            }
+        )
+
+        if (executores.isEmpty()) {
+            content.addView(
+                txt("Nenhum executor configurado.", 12f, lightBlue).apply {
+                    setPadding(0, 0, 0, dp(12))
+                }
+            )
+        }
+
+        val execRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(-1, -2).apply {
+                bottomMargin = dp(12)
+            }
+        }
+
+        executores.forEachIndexed { index, agente ->
+            val cardAg = cardBox(
+                if (agente.online) Color.rgb(10, 36, 38) else cardDark,
+                if (agente.online) green else borderBlue
+            ).apply {
+                addView(txt(agente.sigla, 13f, cyan, true))
+                addView(txt(agente.nome, 13f, white, true))
+                addView(txt("#${agente.id}", 11f, lightBlue))
+                addView(
+                    txt(
+                        if (agente.online) "● Online" else "● Standby",
                         11f,
                         if (agente.online) green else yellow
                     ).apply {
-                        setPadding(0, dp(6), 0, dp(4))
+                        setPadding(0, dp(6), 0, dp(6))
                     }
                 )
-                addView(txt("${agente.vendas} vendas · ${agente.simTag}", 11f, lightBlue))
+                addView(txt("${agente.vendas} vendas", 12f, white, true))
+                addView(txt(agente.simTag, 10f, lightBlue))
             }
-            content.addView(agenteCard)
+
+            execRow.addView(
+                cardAg,
+                LinearLayout.LayoutParams(0, -2, 1f).apply {
+                    if (index == 0) rightMargin = dp(5) else leftMargin = dp(5)
+                }
+            )
         }
-    }
 
-    // EM CURSO
-    content.addView(
-        txt("⌛  EM CURSO AGORA", 11f, lightBlue, true).apply {
-            setPadding(0, dp(12), 0, dp(8))
-        }
-    )
+        content.addView(execRow)
 
-    val emCurso = cardBox(cardDark, borderBlue)
-
-    if (pedidoEmCurso == null) {
-        emCurso.addView(txt("Nenhuma ordem em curso.", 12f, lightBlue))
-    } else {
-        emCurso.addView(
-            txt("${pedidoEmCurso!!.numeroCliente} · ${pedidoEmCurso!!.megas} MB", 13f, white, true)
-        )
-        emCurso.addView(txt("Aguardando confirmação da operadora.", 11f, yellow))
-    }
-
-    content.addView(emCurso)
-
-    // FILA DE ESPERA
-    content.addView(
-        txt("⌛  FILA DE ESPERA (${filaEspera.size})", 11f, lightBlue, true).apply {
-            setPadding(0, dp(12), 0, dp(8))
-        }
-    )
-
-    if (filaEspera.isEmpty()) {
         content.addView(
-            cardBox(cardDark, borderBlue).apply {
-                addView(txt("Sem pedidos à espera de Agente livre.", 12f, lightBlue))
+            txt("⌛ EM CURSO AGORA", 12f, lightBlue, true).apply {
+                setPadding(0, 0, 0, dp(6))
             }
         )
-    } else {
-        filaEspera.forEachIndexed { index, pedido ->
+
+        val runningCard = cardBox(Color.rgb(8, 32, 72), cyan)
+        val atual = pedidoEmCurso
+
+        if (atual == null) {
+            runningCard.addView(
+                txt("Nenhuma ordem em curso no momento.", 12f, lightBlue)
+            )
+        } else {
+            runningCard.addView(
+                txt("${atual.numeroCliente} · ${atual.megas} MB", 15f, white, true)
+            )
+            runningCard.addView(
+                txt(
+                    "Pedido registado · Aguardando confirmação da operadora",
+                    11f,
+                    yellow
+                )
+            )
+        }
+
+        content.addView(runningCard)
+
+        content.addView(
+            txt("FILA DE ESPERA (${filaEspera.size})", 12f, lightBlue, true).apply {
+                setPadding(0, dp(6), 0, dp(8))
+            }
+        )
+
+        if (filaEspera.isEmpty()) {
             content.addView(
-                cardBox(cardDark, borderBlue).apply {
+                txt("Não existem pedidos na fila de espera.", 12f, lightBlue).apply {
+                    setPadding(dp(4), dp(8), dp(4), dp(12))
+                }
+            )
+        }
+
+        filaEspera.forEachIndexed { index, pedido ->
+            val linha = cardBox(cardDark, borderBlue).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+
+                val info = LinearLayout(this@MainActivity).apply {
+                    orientation = LinearLayout.VERTICAL
                     addView(
                         txt(
-                            "${index + 1}.  ${pedido.numeroCliente}",
-                            13f,
+                            "#${index + 1} · ${pedido.numeroCliente}",
+                            14f,
                             white,
                             true
                         )
@@ -842,30 +693,34 @@ private fun telaFilaExecutores() {
                         txt("${pedido.megas} MB · ${pedido.hora}", 11f, lightBlue)
                     )
                 }
-            )
-        }
-    }
 
-    // HISTÓRICO RECENTE
-    content.addView(
-        txt("▤  HISTÓRICO RECENTE (${concluidos.size})", 11f, lightBlue, true).apply {
-            setPadding(0, dp(12), 0, dp(8))
-        }
-    )
+                addView(info, LinearLayout.LayoutParams(0, -2, 1f))
 
-    val recentes = concluidos.take(5)
+                addView(
+                    smallActionBtn("▲ Subir", cyan) {
+                        if (index > 0) {
+                            val item = filaEspera.removeAt(index)
+                            filaEspera.add(index - 1, item)
+                            navegarPara("Fila")
+                        }
+                    },
+                    LinearLayout.LayoutParams(dp(72), dp(30)).apply {
+                        rightMargin = dp(6)
+                    }
+                )
 
-    if (recentes.isEmpty()) {
-        content.addView(
-            cardBox(cardDark, borderBlue).apply {
-                addView(txt("Ainda não há transferências.", 12f, lightBlue))
+                addView(
+                    smallActionBtn("✕ Remover", red) {
+                        filaEspera.removeAt(index)
+                        navegarPara("Fila")
+                    },
+                    LinearLayout.LayoutParams(dp(84), dp(30))
+                )
             }
-        )
-    } else {
-        recentes.forEach { content.addView(buildTransacaoRow(it)) }
-    }
-}
 
+            content.addView(linha)
+        }
+    }
 
     // ============================================================
     // 7. TELA DE HISTÓRICO
@@ -1276,58 +1131,39 @@ private fun telaFilaExecutores() {
     }
 
     // ============================================================
-// 12. CONTADORES DIÁRIOS DOS SIMs
-// ============================================================
+    // 12. CONTADORES DIÁRIOS DOS SIMs
+    // ============================================================
 
-private fun carregarContadores() {
-    sim1Usados = preferencias.getInt("sim1_usados", 0)
-    sim2Usados = preferencias.getInt("sim2_usados", 0)
-
-    simSelecionado = preferencias
-        .getInt("sim_selecionado", 1)
-        .coerceIn(1, 2)
-
-    limiteSim = preferencias.getInt("limite_sim", 10)
-        .coerceAtLeast(1)
-
-    sobraAutomaticaAtiva =
-        preferencias.getBoolean("sobra_ativa", false)
-
-    transferenciasAntesSobra =
-        preferencias.getInt("antes_sobra", 9)
-            .coerceIn(1, limiteSim)
-
-    numeroSobra =
-        preferencias.getString("numero_sobra", "") ?: ""
-}
-
-private fun guardarContadores() {
-    preferencias.edit()
-        .putInt("sim1_usados", sim1Usados)
-        .putInt("sim2_usados", sim2Usados)
-        .putInt("sim_selecionado", simSelecionado)
-        .putInt("limite_sim", limiteSim)
-        .putBoolean("sobra_ativa", sobraAutomaticaAtiva)
-        .putInt("antes_sobra", transferenciasAntesSobra)
-        .putString("numero_sobra", numeroSobra)
-        .putString("data_contadores", dataHoje())
-        .apply()
-}
-
-private fun verificarNovoDia() {
-    val dataGuardada = preferencias.getString("data_contadores", "")
-    val hoje = dataHoje()
-
-    if (dataGuardada != hoje) {
-        sim1Usados = 0
-        sim2Usados = 0
-        guardarContadores()
+    private fun carregarContadores() {
+        sim1Usados = preferencias.getInt("sim1_usados", 0)
+        sim2Usados = preferencias.getInt("sim2_usados", 0)
+        simSelecionado = preferencias.getInt("sim_selecionado", 1)
+            .coerceIn(1, 2)
     }
-}
 
-private fun dataHoje(): String {
-    return SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-}
+    private fun guardarContadores() {
+        preferencias.edit()
+            .putInt("sim1_usados", sim1Usados)
+            .putInt("sim2_usados", sim2Usados)
+            .putInt("sim_selecionado", simSelecionado)
+            .putString("data_contadores", dataHoje())
+            .apply()
+    }
+
+    private fun verificarNovoDia() {
+        val dataGuardada = preferencias.getString("data_contadores", "")
+        val hoje = dataHoje()
+
+        if (dataGuardada != hoje) {
+            sim1Usados = 0
+            sim2Usados = 0
+            guardarContadores()
+        }
+    }
+
+    private fun dataHoje(): String {
+        return SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+    }
 
     // ============================================================
     // 13. COMPONENTE DO CÍRCULO DE PROGRESSO
