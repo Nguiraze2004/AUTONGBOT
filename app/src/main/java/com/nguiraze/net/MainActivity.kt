@@ -442,6 +442,18 @@ class MainActivity : Activity() {
         )
 
         content.addView(simsRow)
+        content.addView(
+    smallActionBtn("GERIR →", green) {
+        navegarPara("SIMs")
+    },
+    LinearLayout.LayoutParams(
+        -1,
+        dp(38)
+    ).apply {
+        topMargin = dp(8)
+        bottomMargin = dp(10)
+    }
+)
 
         content.addView(
             txt("Contadores diários dos cartões SIM", 11f, lightBlue).apply {
