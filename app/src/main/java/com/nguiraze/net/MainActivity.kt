@@ -1305,10 +1305,32 @@ private fun telaFilaExecutores() {
     }
 
     // ============================================================
-    // 12. CONTADORES DIÁRIOS DOS SIMs
-    // ============================================================
+// 12. CONTADORES DIÁRIOS DOS SIMs
+// ============================================================
 
-    private fun guardarContadores() {
+private fun carregarContadores() {
+    sim1Usados = preferencias.getInt("sim1_usados", 0)
+    sim2Usados = preferencias.getInt("sim2_usados", 0)
+
+    simSelecionado = preferencias
+        .getInt("sim_selecionado", 1)
+        .coerceIn(1, 2)
+
+    limiteSim = preferencias.getInt("limite_sim", 10)
+        .coerceAtLeast(1)
+
+    sobraAutomaticaAtiva =
+        preferencias.getBoolean("sobra_ativa", false)
+
+    transferenciasAntesSobra =
+        preferencias.getInt("antes_sobra", 9)
+            .coerceIn(1, limiteSim)
+
+    numeroSobra =
+        preferencias.getString("numero_sobra", "") ?: ""
+}
+
+private fun guardarContadores() {
     preferencias.edit()
         .putInt("sim1_usados", sim1Usados)
         .putInt("sim2_usados", sim2Usados)
@@ -1319,22 +1341,22 @@ private fun telaFilaExecutores() {
         .putString("numero_sobra", numeroSobra)
         .putString("data_contadores", dataHoje())
         .apply()
-    }
+}
 
-    private fun verificarNovoDia() {
-        val dataGuardada = preferencias.getString("data_contadores", "")
-        val hoje = dataHoje()
+private fun verificarNovoDia() {
+    val dataGuardada = preferencias.getString("data_contadores", "")
+    val hoje = dataHoje()
 
-        if (dataGuardada != hoje) {
-            sim1Usados = 0
-            sim2Usados = 0
-            guardarContadores()
-        }
+    if (dataGuardada != hoje) {
+        sim1Usados = 0
+        sim2Usados = 0
+        guardarContadores()
     }
+}
 
-    private fun dataHoje(): String {
-        return SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-    }
+private fun dataHoje(): String {
+    return SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+}
 
     // ============================================================
     // 13. COMPONENTE DO CÍRCULO DE PROGRESSO
