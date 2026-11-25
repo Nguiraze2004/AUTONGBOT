@@ -599,7 +599,7 @@ private fun telaFilaExecutores() {
         setTextColor(white)
         textSize = 14f
         inputType = InputType.TYPE_CLASS_PHONE
-        singleLine = true
+        isSingleLine = true
         setPadding(dp(16), 0, dp(12), 0)
         background = roundRect(Color.BLACK, borderBlue, 18)
     }
@@ -610,7 +610,7 @@ private fun telaFilaExecutores() {
         setTextColor(white)
         textSize = 14f
         inputType = InputType.TYPE_CLASS_NUMBER
-        singleLine = true
+        isSingleLine = true
         setPadding(dp(16), 0, dp(12), 0)
         background = roundRect(Color.BLACK, borderBlue, 18)
     }
