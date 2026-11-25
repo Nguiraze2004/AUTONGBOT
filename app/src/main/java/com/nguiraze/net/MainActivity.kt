@@ -94,7 +94,12 @@ class MainActivity : Activity() {
     private var simSelecionado = 1
     private var sim1Usados = 0
     private var sim2Usados = 0
-    private val limiteSim = 10
+    private var limiteSim = 10
+
+// SOBRA AUTOMÁTICA
+private var sobraAutomaticaAtiva = false
+private var transferenciasAntesSobra = 9
+private var numeroSobra = ""
 
     private var filtroConclusao = "Todos"
     private var filaPausada = false
