@@ -1308,13 +1308,6 @@ private fun telaFilaExecutores() {
     // 12. CONTADORES DIÁRIOS DOS SIMs
     // ============================================================
 
-    private fun carregarContadores() {
-        sim1Usados = preferencias.getInt("sim1_usados", 0)
-        sim2Usados = preferencias.getInt("sim2_usados", 0)
-        simSelecionado = preferencias.getInt("sim_selecionado", 1)
-            .coerceIn(1, 2)
-    }
-
     private fun guardarContadores() {
         preferencias.edit()
             .putInt("sim1_usados", sim1Usados)
