@@ -83,14 +83,15 @@ class UssdAccessibilityService : AccessibilityService() {
         }
 
         // GUARDAR CONFIRMAÇÃO REAL
-        preferencias.edit()
-            .putString("ultima_assinatura", assinatura)
-            .putLong("hora_ultima_assinatura", agora)
-            .putString("ussd_sucesso_numero", numero)
-            .putInt("ussd_sucesso_megas", megas)
-            .putLong("ussd_sucesso_hora", agora)
-            .putBoolean("ussd_sucesso_pendente", true)
-            .apply()
+        val pacote = event.packageName?.toString() ?: "Desconhecida"
+
+// Ignorar eventos da própria aplicação
+if (pacote == "com.nguiraze.net") return
+
+preferencias.edit()
+    .putString("ultima_leitura", leitura)
+    .putString("ultima_janela", pacote)
+    .apply()
 
         Log.d(
             "NGUIRAZE_USSD",
