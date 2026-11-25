@@ -1309,12 +1309,16 @@ private fun telaFilaExecutores() {
     // ============================================================
 
     private fun guardarContadores() {
-        preferencias.edit()
-            .putInt("sim1_usados", sim1Usados)
-            .putInt("sim2_usados", sim2Usados)
-            .putInt("sim_selecionado", simSelecionado)
-            .putString("data_contadores", dataHoje())
-            .apply()
+    preferencias.edit()
+        .putInt("sim1_usados", sim1Usados)
+        .putInt("sim2_usados", sim2Usados)
+        .putInt("sim_selecionado", simSelecionado)
+        .putInt("limite_sim", limiteSim)
+        .putBoolean("sobra_ativa", sobraAutomaticaAtiva)
+        .putInt("antes_sobra", transferenciasAntesSobra)
+        .putString("numero_sobra", numeroSobra)
+        .putString("data_contadores", dataHoje())
+        .apply()
     }
 
     private fun verificarNovoDia() {
