@@ -106,40 +106,7 @@ private var filaPausada = false
 private var metaGb = 10
 
 // SOBRA AUTOMÁTICA
-private fun carregarContadores() {
-    sim1Usados = preferencias.getInt("sim1_usados", 0)
-    sim2Usados = preferencias.getInt("sim2_usados", 0)
 
-    simSelecionado = preferencias
-        .getInt("sim_selecionado", 1)
-        .coerceIn(1, 2)
-
-    limiteSim = preferencias.getInt("limite_sim", 10)
-        .coerceAtLeast(1)
-
-    sobraAutomaticaAtiva =
-        preferencias.getBoolean("sobra_ativa", false)
-
-    transferenciasAntesSobra =
-        preferencias.getInt("antes_sobra", 9)
-            .coerceIn(1, limiteSim)
-
-    numeroSobra =
-        preferencias.getString("numero_sobra", "") ?: ""
-}
-
-private fun guardarContadores() {
-    preferencias.edit()
-        .putInt("sim1_usados", sim1Usados)
-        .putInt("sim2_usados", sim2Usados)
-        .putInt("sim_selecionado", simSelecionado)
-        .putInt("limite_sim", limiteSim)
-        .putBoolean("sobra_ativa", sobraAutomaticaAtiva)
-        .putInt("antes_sobra", transferenciasAntesSobra)
-        .putString("numero_sobra", numeroSobra)
-        .putString("data_contadores", dataHoje())
-        .apply()
-}
 
     private val preferencias by lazy {
         getSharedPreferences("nguiraze_net_dados", Context.MODE_PRIVATE)
