@@ -878,7 +878,6 @@ private fun telaFilaExecutores() {
                 }
             )
         }
-    }
 
     // HISTÓRICO RECENTE
     content.addView(
