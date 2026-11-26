@@ -2,18 +2,22 @@ package com.nguiraze.net
 
 import android.app.Activity
 import android.content.Context
+import android.content.Intent
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.text.InputType
 import android.view.Gravity
 import android.view.View
-import android.widget.EditText
-import android.text.InputType
 import android.view.ViewGroup
+import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -88,6 +92,13 @@ class MainActivity : Activity() {
     private val executores = mutableListOf<AgenteExecutor>()
 
     private var pedidoEmCurso: PedidoFila? = null
+
+    private val handler = Handler(Looper.getMainLooper())
+    private val watchdogFilaRunnable = Runnable {
+        if (pedidoEmCurso != null) {
+            interromperPedidoEmCurso(continuarFila = true)
+        }
+    }
 
     // -------------------- CONTROLO DOS SIMs --------------------
 
@@ -168,6 +179,11 @@ class MainActivity : Activity() {
         navegarPara("Início")
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        handler.removeCallbacks(watchdogFilaRunnable)
+    }
+
     // ============================================================
     // 4. NAVEGAÇÃO
     // ============================================================
@@ -195,7 +211,7 @@ class MainActivity : Activity() {
     private fun telaInicio() {
         val entreguesHoje = concluidos.filter { it.status == "Entregue" }
         val totalConcluidas = entreguesHoje.size
-        val totalMegas = entreguesHoje.sumBy { it.megas }
+        val totalMegas = entreguesHoje.sumOf { it.megas }
         val gbCalculados = totalMegas / 1024.0
 
         val progresso = if (metaGb > 0) {
@@ -465,7 +481,11 @@ class MainActivity : Activity() {
                     yellow
                 ) {
                     filaPausada = !filaPausada
-                    navegarPara("Início")
+                    if (!filaPausada && pedidoEmCurso == null) {
+                        processarProximoDaFila()
+                    } else {
+                        navegarPara("Início")
+                    }
                 },
                 LinearLayout.LayoutParams(dp(95), dp(32))
             )
@@ -499,219 +519,18 @@ class MainActivity : Activity() {
         }
     }
 
-
     // ============================================================
-    // 6. TELA FILA E EXECUTOR 
+    // 6. TELA FILA E EXECUTOR
     // ============================================================
-    
-private fun telaFilaExecutores() {
-
-    // CABEÇALHO
-    val topBar = LinearLayout(this).apply {
-        orientation = LinearLayout.HORIZONTAL
-        gravity = Gravity.CENTER_VERTICAL
-    }
-
-    addViewHeader@ run {
-        val voltar = txt("‹", 28f, white, true).apply {
-            setPadding(0, 0, dp(12), 0)
-            setOnClickListener { navegarPara("Início") }
-        }
-        topBar.addView(voltar)
-
-        val titulo = LinearLayout(this@MainActivity).apply {
-            orientation = LinearLayout.VERTICAL
-            addView(txt("Painel do Executor", 17f, white, true))
-            addView(txt("Este aparelho · Painel local", 11f, lightBlue))
-        }
-
-        topBar.addView(titulo, LinearLayout.LayoutParams(0, -2, 1f))
-        topBar.addView(txt("▣", 20f, lightBlue))
-        topBar.addView(txt("  $", 20f, yellow))
-    }
-
-    content.addView(topBar)
-
-    // PESQUISA
-    val pesquisa = EditText(this).apply {
-        hint = "⌕  Buscar por número ou nome do Agente..."
-        setHintTextColor(lightBlue)
-        setTextColor(white)
-        textSize = 13f
-        setSingleLine(true)
-        setPadding(dp(16), 0, dp(12), 0)
-        background = roundRect(cardDark, borderBlue, 28)
-    }
-
-    content.addView(
-        pesquisa,
-        LinearLayout.LayoutParams(-1, dp(46)).apply {
-            topMargin = dp(14)
-            bottomMargin = dp(12)
-        }
-    )
-
-    // INDICADORES
-    val indicadores = LinearLayout(this).apply {
-        orientation = LinearLayout.HORIZONTAL
-    }
-
-    fun indicador(valor: String, descricao: String, cor: Int): LinearLayout {
-        return cardBox(cardDark, borderBlue).apply {
-            gravity = Gravity.CENTER
-            addView(txt(valor, 22f, cor, true))
-            addView(txt(descricao, 10f, lightBlue))
-        }
-    }
-
-    val online = executores.count { it.online }
-
-    val cards = listOf(
-        indicador("${online}/${executores.size}", "online", green),
-        indicador("${if (pedidoEmCurso != null) 1 else 0}", "em curso", yellow),
-        indicador("${filaEspera.size}", "em espera", cyan),
-        indicador("0", "bloqueados", red)
-    )
-
-    cards.forEachIndexed { index, card ->
-        indicadores.addView(
-            card,
-            LinearLayout.LayoutParams(0, dp(90), 1f).apply {
-                if (index != 0) leftMargin = dp(4)
-                if (index != 3) rightMargin = dp(4)
-            }
-        )
-    }
-
-    content.addView(indicadores)
-
-    // TÍTULO ENVIO MANUAL
-    content.addView(
-        txt("▶  ENVIO MANUAL", 11f, lightBlue, true).apply {
-            setPadding(0, dp(12), 0, dp(8))
-        }
-    )
-
-    // CAMPOS DE ENTRADA
-    val numeroCampo = EditText(this).apply {
-        hint = "▣  Número do cliente"
-        setHintTextColor(lightBlue)
-        setTextColor(white)
-        textSize = 14f
-        inputType = InputType.TYPE_CLASS_PHONE
-        isSingleLine = true
-        setPadding(dp(16), 0, dp(12), 0)
-        background = roundRect(Color.BLACK, borderBlue, 18)
-    }
-
-    val megasCampo = EditText(this).apply {
-        hint = "⌁  Megabytes"
-        setHintTextColor(lightBlue)
-        setTextColor(white)
-        textSize = 14f
-        inputType = InputType.TYPE_CLASS_NUMBER
-        isSingleLine = true
-        setPadding(dp(16), 0, dp(12), 0)
-        background = roundRect(Color.BLACK, borderBlue, 18)
-    }
-
-    // CARTÃO DE ENVIO
-    val envioCard = cardBox(cardDark, borderBlue)
-
-    envioCard.addView(
-        txt("➤   Envio manual", 14f, white, true)
-    )
-
-    envioCard.addView(
-        txt(
-            "Preencha os dados para registar um pedido.",
-            11f,
-            lightBlue
-        ).apply {
-            setPadding(0, dp(4), 0, dp(12))
-        }
-    )
-
-    envioCard.addView(
-        txt("PACOTES RÁPIDOS", 10f, lightBlue, true)
-    )
-
-    val pacotes = LinearLayout(this).apply {
-        orientation = LinearLayout.HORIZONTAL
-        gravity = Gravity.CENTER_VERTICAL
-    }
-
-    val pacote100 = TextView(this).apply {
-        text = "100MB\n10 MT"
-        textSize = 12f
-        setTextColor(green)
-        setTypeface(null, Typeface.BOLD)
-        gravity = Gravity.CENTER
-        background = roundRect(Color.BLACK, green, 14)
-        setPadding(dp(18), dp(8), dp(18), dp(8))
-
-        setOnClickListener {
-            megasCampo.setText("100")
-        }
-    }
-
-    pacotes.addView(pacote100)
-    pacotes.addView(
-        txt("  ›", 22f, white).apply {
-            setPadding(dp(12), 0, 0, 0)
-        }
-    )
-
-    envioCard.addView(
-        pacotes,
-        LinearLayout.LayoutParams(-1, -2).apply {
-            topMargin = dp(8)
-            bottomMargin = dp(14)
-        }
-    )
-
-    envioCard.addView(
-        View(this).apply {
-            setBackgroundColor(borderBlue)
-        },
-        LinearLayout.LayoutParams(-1, dp(1)).apply {
-            bottomMargin = dp(14)
-        }
-    )
-
-    envioCard.addView(
-        numeroCampo,
-        LinearLayout.LayoutParams(-1, dp(46)).apply {
-            bottomMargin = dp(14)
-        }
-    )
-
-    envioCard.addView(
-        megasCampo,
-        LinearLayout.LayoutParams(-1, dp(46)).apply {
-            bottomMargin = dp(6)
-        }
-    )
-
-    envioCard.addView(
-        txt(
-            "100MB a 10GB. Acima disso, 20, 30, 40 ou 50GB.",
-            10f,
-            lightBlue
-        ).apply {
-            setPadding(dp(4), dp(4), 0, dp(12))
-        }
-    )
 
     private fun telaFilaExecutores() {
 
-    // CABEÇALHO
-    val topBar = LinearLayout(this).apply {
-        orientation = LinearLayout.HORIZONTAL
-        gravity = Gravity.CENTER_VERTICAL
-    }
+        // CABEÇALHO
+        val topBar = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
 
-    addViewHeader@ run {
         val voltar = txt("‹", 28f, white, true).apply {
             setPadding(0, 0, dp(12), 0)
             setOnClickListener { navegarPara("Início") }
@@ -727,300 +546,463 @@ private fun telaFilaExecutores() {
         topBar.addView(titulo, LinearLayout.LayoutParams(0, -2, 1f))
         topBar.addView(txt("▣", 20f, lightBlue))
         topBar.addView(txt("  $", 20f, yellow))
-    }
 
-    content.addView(topBar)
+        content.addView(topBar)
 
-    // PESQUISA
-    val pesquisa = EditText(this).apply {
-        hint = "⌕  Buscar por número ou nome do Agente..."
-        setHintTextColor(lightBlue)
-        setTextColor(white)
-        textSize = 13f
-        setSingleLine(true)
-        setPadding(dp(16), 0, dp(12), 0)
-        background = roundRect(cardDark, borderBlue, 28)
-    }
-
-    content.addView(
-        pesquisa,
-        LinearLayout.LayoutParams(-1, dp(46)).apply {
-            topMargin = dp(14)
-            bottomMargin = dp(12)
+        // PESQUISA
+        val pesquisa = EditText(this).apply {
+            hint = "⌕  Buscar por número ou nome do Agente..."
+            setHintTextColor(lightBlue)
+            setTextColor(white)
+            textSize = 13f
+            setSingleLine(true)
+            setPadding(dp(16), 0, dp(12), 0)
+            background = roundRect(cardDark, borderBlue, 28)
         }
-    )
 
-    // INDICADORES
-    val indicadores = LinearLayout(this).apply {
-        orientation = LinearLayout.HORIZONTAL
-    }
-
-    fun indicador(valor: String, descricao: String, cor: Int): LinearLayout {
-        return cardBox(cardDark, borderBlue).apply {
-            gravity = Gravity.CENTER
-            addView(txt(valor, 22f, cor, true))
-            addView(txt(descricao, 10f, lightBlue))
-        }
-    }
-
-    val online = executores.count { it.online }
-
-    val cards = listOf(
-        indicador("${online}/${executores.size}", "online", green),
-        indicador("${if (pedidoEmCurso != null) 1 else 0}", "em curso", yellow),
-        indicador("${filaEspera.size}", "em espera", cyan),
-        indicador("0", "bloqueados", red)
-    )
-
-    cards.forEachIndexed { index, card ->
-        indicadores.addView(
-            card,
-            LinearLayout.LayoutParams(0, dp(90), 1f).apply {
-                if (index != 0) leftMargin = dp(4)
-                if (index != 3) rightMargin = dp(4)
+        content.addView(
+            pesquisa,
+            LinearLayout.LayoutParams(-1, dp(46)).apply {
+                topMargin = dp(14)
+                bottomMargin = dp(12)
             }
         )
-    }
 
-    content.addView(indicadores)
-
-    // BOTÕES RÁPIDOS DE CONTROLO (LADO A LADO)
-    val linhaControlos = LinearLayout(this).apply {
-        orientation = LinearLayout.HORIZONTAL
-        gravity = Gravity.CENTER_VERTICAL
-    }
-
-    linhaControlos.addView(
-        smallActionBtn("⏹ Interromper", red) {
-            interromperPedidoEmCurso(continuarFila = false)
-        },
-        LinearLayout.LayoutParams(0, dp(38), 1f).apply { rightMargin = dp(4) }
-    )
-
-    linhaControlos.addView(
-        smallActionBtn("🗑 Limpar Fila", yellow) {
-            limparFilaEspera()
-        },
-        LinearLayout.LayoutParams(0, dp(38), 1f).apply {
-            leftMargin = dp(4)
-            rightMargin = dp(4)
+        // INDICADORES
+        val indicadores = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
         }
-    )
 
-    linhaControlos.addView(
-        smallActionBtn("⚡ Detetar/Limpar", borderBlue) {
-            detetarELimparPedidosAtivos()
-        },
-        LinearLayout.LayoutParams(0, dp(38), 1f).apply { leftMargin = dp(4) }
-    )
-
-    content.addView(
-        linhaControlos,
-        LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) }
-    )
-
-    // TÍTULO ENVIO MANUAL
-    content.addView(
-        txt("▶  ENVIO MANUAL", 11f, lightBlue, true).apply {
-            setPadding(0, dp(12), 0, dp(8))
-        }
-    )
-
-    val envioCard = cardBox(cardDark, borderBlue)
-
-    val numeroCampo = EditText(this).apply {
-        hint = "Número do cliente (ex: 84...)"
-        setHintTextColor(lightBlue)
-        setTextColor(white)
-        textSize = 13f
-        inputType = android.text.InputType.TYPE_CLASS_PHONE
-        setSingleLine(true)
-        setPadding(dp(14), 0, dp(14), 0)
-        background = roundRect(bgDark, borderBlue, 18)
-    }
-
-    val megasCampo = EditText(this).apply {
-        hint = "Megabytes (mínimo 100)"
-        setHintTextColor(lightBlue)
-        setTextColor(white)
-        textSize = 13f
-        inputType = android.text.InputType.TYPE_CLASS_NUMBER
-        setSingleLine(true)
-        setPadding(dp(14), 0, dp(14), 0)
-        background = roundRect(bgDark, borderBlue, 18)
-    }
-
-    envioCard.addView(
-        numeroCampo,
-        LinearLayout.LayoutParams(-1, dp(42)).apply { bottomMargin = dp(8) }
-    )
-
-    envioCard.addView(
-        megasCampo,
-        LinearLayout.LayoutParams(-1, dp(42)).apply { bottomMargin = dp(10) }
-    )
-
-    val despachar = smallActionBtn("➤  Despachar para um Agente", green) {
-        val numero = numeroCampo.text.toString().trim()
-        val megas = megasCampo.text.toString().trim().toIntOrNull()
-
-        if (numero.isEmpty()) {
-            Toast.makeText(this, "Introduza o número do cliente.", Toast.LENGTH_SHORT).show()
-        } else if (numero.length < 9) {
-            Toast.makeText(this, "Verifique o número do cliente.", Toast.LENGTH_SHORT).show()
-        } else if (megas == null || megas < 100) {
-            Toast.makeText(this, "O mínimo é 100 MB.", Toast.LENGTH_SHORT).show()
-        } else {
-            val hora = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
-
-            filaEspera.add(
-                PedidoFila(
-                    System.currentTimeMillis().toString(),
-                    numero,
-                    megas,
-                    hora
-                )
-            )
-
-            numeroCampo.text.clear()
-            megasCampo.text.clear()
-
-            if (!filaPausada && pedidoEmCurso == null) {
-                processarProximoDaFila()
-            } else {
-                Toast.makeText(
-                    this,
-                    "Pedido registado na fila.",
-                    Toast.LENGTH_SHORT
-                ).show()
-                navegarPara("Fila")
+        fun indicador(valor: String, descricao: String, cor: Int): LinearLayout {
+            return cardBox(cardDark, borderBlue).apply {
+                gravity = Gravity.CENTER
+                addView(txt(valor, 22f, cor, true))
+                addView(txt(descricao, 10f, lightBlue))
             }
         }
-    }
 
-    envioCard.addView(
-        despachar,
-        LinearLayout.LayoutParams(-1, dp(42))
-    )
+        val online = executores.count { it.online }
 
-    content.addView(envioCard)
+        val cards = listOf(
+            indicador("${online}/${executores.size}", "online", green),
+            indicador("${if (pedidoEmCurso != null) 1 else 0}", "em curso", yellow),
+            indicador("${filaEspera.size}", "em espera", cyan),
+            indicador("0", "bloqueados", red)
+        )
 
-    // EXECUTORES
-    content.addView(
-        txt("▣  EXECUTORES (${executores.size})", 11f, lightBlue, true).apply {
-            setPadding(0, dp(14), 0, dp(8))
-        }
-    )
-
-    if (executores.isEmpty()) {
-        val aparelho = cardBox(cardDark, borderBlue).apply {
-            addView(txt("ES   Este aparelho", 13f, white, true))
-            addView(txt("Dispositivo local", 10f, lightBlue))
-            addView(
-                txt(
-                    if (UssdAccessibilityService.servicoAtivo) "● USSD ligado" else "● USSD não ligado",
-                    11f,
-                    if (UssdAccessibilityService.servicoAtivo) green else yellow
-                ).apply {
-                    setPadding(0, dp(8), 0, dp(4))
+        cards.forEachIndexed { index, card ->
+            indicadores.addView(
+                card,
+                LinearLayout.LayoutParams(0, dp(90), 1f).apply {
+                    if (index != 0) leftMargin = dp(4)
+                    if (index != 3) rightMargin = dp(4)
                 }
             )
-            addView(txt("0 vendas confirmadas", 11f, lightBlue))
         }
-        content.addView(aparelho)
-    } else {
-        executores.forEach { agente ->
-            val agenteCard = cardBox(cardDark, borderBlue).apply {
-                addView(txt("${agente.sigla}   ${agente.nome}", 14f, white, true))
-                addView(txt("#${agente.id}", 10f, lightBlue))
+
+        content.addView(indicadores)
+
+        // BOTÕES RÁPIDOS DE CONTROLO (LADO A LADO)
+        val linhaControlos = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+
+        linhaControlos.addView(
+            smallActionBtn("⏹ Interromper", red) {
+                interromperPedidoEmCurso(continuarFila = false)
+            },
+            LinearLayout.LayoutParams(0, dp(38), 1f).apply { rightMargin = dp(4) }
+        )
+
+        linhaControlos.addView(
+            smallActionBtn("🗑 Limpar Fila", yellow) {
+                limparFilaEspera()
+            },
+            LinearLayout.LayoutParams(0, dp(38), 1f).apply {
+                leftMargin = dp(4)
+                rightMargin = dp(4)
+            }
+        )
+
+        linhaControlos.addView(
+            smallActionBtn("⚡ Detetar/Limpar", borderBlue) {
+                detetarELimparPedidosAtivos()
+            },
+            LinearLayout.LayoutParams(0, dp(38), 1f).apply { leftMargin = dp(4) }
+        )
+
+        content.addView(
+            linhaControlos,
+            LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) }
+        )
+
+        // TÍTULO ENVIO MANUAL
+        content.addView(
+            txt("▶  ENVIO MANUAL", 11f, lightBlue, true).apply {
+                setPadding(0, dp(12), 0, dp(8))
+            }
+        )
+
+        // CAMPOS DE ENTRADA
+        val numeroCampo = EditText(this).apply {
+            hint = "▣  Número do cliente (ex: 84...)"
+            setHintTextColor(lightBlue)
+            setTextColor(white)
+            textSize = 14f
+            inputType = InputType.TYPE_CLASS_PHONE
+            isSingleLine = true
+            setPadding(dp(16), 0, dp(12), 0)
+            background = roundRect(Color.BLACK, borderBlue, 18)
+        }
+
+        val megasCampo = EditText(this).apply {
+            hint = "⌁  Megabytes (mínimo 100)"
+            setHintTextColor(lightBlue)
+            setTextColor(white)
+            textSize = 14f
+            inputType = InputType.TYPE_CLASS_NUMBER
+            isSingleLine = true
+            setPadding(dp(16), 0, dp(12), 0)
+            background = roundRect(Color.BLACK, borderBlue, 18)
+        }
+
+        // CARTÃO DE ENVIO
+        val envioCard = cardBox(cardDark, borderBlue)
+
+        envioCard.addView(
+            txt("➤   Envio manual", 14f, white, true)
+        )
+
+        envioCard.addView(
+            txt(
+                "Preencha os dados para registar um pedido.",
+                11f,
+                lightBlue
+            ).apply {
+                setPadding(0, dp(4), 0, dp(12))
+            }
+        )
+
+        envioCard.addView(
+            txt("PACOTES RÁPIDOS", 10f, lightBlue, true)
+        )
+
+        val pacotes = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+
+        val pacote100 = TextView(this).apply {
+            text = "100MB\n10 MT"
+            textSize = 12f
+            setTextColor(green)
+            setTypeface(null, Typeface.BOLD)
+            gravity = Gravity.CENTER
+            background = roundRect(Color.BLACK, green, 14)
+            setPadding(dp(18), dp(8), dp(18), dp(8))
+
+            setOnClickListener {
+                megasCampo.setText("100")
+            }
+        }
+
+        pacotes.addView(pacote100)
+        pacotes.addView(
+            txt("  ›", 22f, white).apply {
+                setPadding(dp(12), 0, 0, 0)
+            }
+        )
+
+        envioCard.addView(
+            pacotes,
+            LinearLayout.LayoutParams(-1, -2).apply {
+                topMargin = dp(8)
+                bottomMargin = dp(14)
+            }
+        )
+
+        envioCard.addView(
+            View(this).apply {
+                setBackgroundColor(borderBlue)
+            },
+            LinearLayout.LayoutParams(-1, dp(1)).apply {
+                bottomMargin = dp(14)
+            }
+        )
+
+        envioCard.addView(
+            numeroCampo,
+            LinearLayout.LayoutParams(-1, dp(46)).apply {
+                bottomMargin = dp(14)
+            }
+        )
+
+        envioCard.addView(
+            megasCampo,
+            LinearLayout.LayoutParams(-1, dp(46)).apply {
+                bottomMargin = dp(6)
+            }
+        )
+
+        envioCard.addView(
+            txt(
+                "100MB a 10GB. Acima disso, 20, 30, 40 ou 50GB.",
+                10f,
+                lightBlue
+            ).apply {
+                setPadding(dp(4), dp(4), 0, dp(12))
+            }
+        )
+
+        val despachar = smallActionBtn("➤  Despachar para um Agente", green) {
+            val numero = numeroCampo.text.toString().trim()
+            val megas = megasCampo.text.toString().trim().toIntOrNull()
+
+            if (numero.isEmpty()) {
+                Toast.makeText(this, "Introduza o número do cliente.", Toast.LENGTH_SHORT).show()
+            } else if (numero.length < 9) {
+                Toast.makeText(this, "Verifique o número do cliente.", Toast.LENGTH_SHORT).show()
+            } else if (megas == null || megas < 100) {
+                Toast.makeText(this, "O mínimo é 100 MB.", Toast.LENGTH_SHORT).show()
+            } else {
+                val hora = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
+
+                filaEspera.add(
+                    PedidoFila(
+                        System.currentTimeMillis().toString(),
+                        numero,
+                        megas,
+                        hora
+                    )
+                )
+
+                numeroCampo.text.clear()
+                megasCampo.text.clear()
+
+                if (!filaPausada && pedidoEmCurso == null) {
+                    processarProximoDaFila()
+                } else {
+                    Toast.makeText(
+                        this,
+                        "Pedido registado na fila.",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    navegarPara("Fila")
+                }
+            }
+        }
+
+        envioCard.addView(
+            despachar,
+            LinearLayout.LayoutParams(-1, dp(42))
+        )
+
+        content.addView(envioCard)
+
+        // EXECUTORES
+        content.addView(
+            txt("▣  EXECUTORES (${executores.size})", 11f, lightBlue, true).apply {
+                setPadding(0, dp(14), 0, dp(8))
+            }
+        )
+
+        if (executores.isEmpty()) {
+            val aparelho = cardBox(cardDark, borderBlue).apply {
+                addView(txt("ES   Este aparelho", 13f, white, true))
+                addView(txt("Dispositivo local", 10f, lightBlue))
                 addView(
                     txt(
-                        if (agente.online) "● Online" else "● Offline",
+                        "● USSD não ligado",
                         11f,
-                        if (agente.online) green else yellow
+                        yellow
                     ).apply {
-                        setPadding(0, dp(6), 0, dp(4))
+                        setPadding(0, dp(8), 0, dp(4))
                     }
                 )
-                addView(txt("${agente.vendas} vendas · ${agente.simTag}", 11f, lightBlue))
+                addView(txt("0 vendas confirmadas", 11f, lightBlue))
             }
-            content.addView(agenteCard)
-        }
-    }
-
-    // EM CURSO
-    content.addView(
-        txt("⌛  EM CURSO AGORA", 11f, lightBlue, true).apply {
-            setPadding(0, dp(12), 0, dp(8))
-        }
-    )
-
-    val emCurso = cardBox(cardDark, borderBlue)
-
-    if (pedidoEmCurso == null) {
-        emCurso.addView(txt("Nenhuma ordem em curso.", 12f, lightBlue))
-    } else {
-        emCurso.addView(
-            txt("${pedidoEmCurso!!.numeroCliente} · ${pedidoEmCurso!!.megas} MB", 13f, white, true)
-        )
-        emCurso.addView(txt("Aguardando confirmação da operadora.", 11f, yellow))
-    }
-
-    content.addView(emCurso)
-
-    // FILA DE ESPERA
-    content.addView(
-        txt("⌛  FILA DE ESPERA (${filaEspera.size})", 11f, lightBlue, true).apply {
-            setPadding(0, dp(12), 0, dp(8))
-        }
-    )
-
-    if (filaEspera.isEmpty()) {
-        content.addView(
-            cardBox(cardDark, borderBlue).apply {
-                addView(txt("Sem pedidos à espera de Agente livre.", 12f, lightBlue))
-            }
-        )
-    } else {
-        filaEspera.forEachIndexed { index, pedido ->
-            content.addView(
-                cardBox(cardDark, borderBlue).apply {
+            content.addView(aparelho)
+        } else {
+            executores.forEach { agente ->
+                val agenteCard = cardBox(cardDark, borderBlue).apply {
+                    addView(txt("${agente.sigla}   ${agente.nome}", 14f, white, true))
+                    addView(txt("#${agente.id}", 10f, lightBlue))
                     addView(
                         txt(
-                            "${index + 1}.  ${pedido.numeroCliente}",
-                            13f,
-                            white,
-                            true
-                        )
+                            if (agente.online) "● Online" else "● Offline",
+                            11f,
+                            if (agente.online) green else yellow
+                        ).apply {
+                            setPadding(0, dp(6), 0, dp(4))
+                        }
                     )
-                    addView(
-                        txt("${pedido.megas} MB · ${pedido.hora}", 11f, lightBlue)
-                    )
+                    addView(txt("${agente.vendas} vendas · ${agente.simTag}", 11f, lightBlue))
                 }
-            )
+                content.addView(agenteCard)
+            }
         }
-    }
 
-    // HISTÓRICO RECENTE
-    content.addView(
-        txt("▤  HISTÓRICO RECENTE (${concluidos.size})", 11f, lightBlue, true).apply {
-            setPadding(0, dp(12), 0, dp(8))
-        }
-    )
-
-    val recentes = concluidos.take(5)
-
-    if (recentes.isEmpty()) {
+        // EM CURSO
         content.addView(
-            cardBox(cardDark, borderBlue).apply {
-                addView(txt("Ainda não há transferências.", 12f, lightBlue))
+            txt("⌛  EM CURSO AGORA", 11f, lightBlue, true).apply {
+                setPadding(0, dp(12), 0, dp(8))
             }
         )
-    } else {
-        recentes.forEach { content.addView(buildTransacaoRow(it)) }
-    }
-}
 
+        val emCurso = cardBox(cardDark, borderBlue)
+
+        if (pedidoEmCurso == null) {
+            emCurso.addView(txt("Nenhuma ordem em curso.", 12f, lightBlue))
+        } else {
+            emCurso.addView(
+                txt("${pedidoEmCurso!!.numeroCliente} · ${pedidoEmCurso!!.megas} MB", 13f, white, true)
+            )
+            emCurso.addView(txt("Aguardando confirmação da operadora.", 11f, yellow))
+        }
+
+        content.addView(emCurso)
+
+        // FILA DE ESPERA
+        content.addView(
+            txt("⌛  FILA DE ESPERA (${filaEspera.size})", 11f, lightBlue, true).apply {
+                setPadding(0, dp(12), 0, dp(8))
+            }
+        )
+
+        if (filaEspera.isEmpty()) {
+            content.addView(
+                cardBox(cardDark, borderBlue).apply {
+                    addView(txt("Sem pedidos à espera de Agente livre.", 12f, lightBlue))
+                }
+            )
+        } else {
+            filaEspera.forEachIndexed { index, pedido ->
+                content.addView(
+                    cardBox(cardDark, borderBlue).apply {
+                        addView(
+                            txt(
+                                "${index + 1}.  ${pedido.numeroCliente}",
+                                13f,
+                                white,
+                                true
+                            )
+                        )
+                        addView(
+                            txt("${pedido.megas} MB · ${pedido.hora}", 11f, lightBlue)
+                        )
+                    }
+                )
+            }
+        }
+
+        // HISTÓRICO RECENTE
+        content.addView(
+            txt("▤  HISTÓRICO RECENTE (${concluidos.size})", 11f, lightBlue, true).apply {
+                setPadding(0, dp(12), 0, dp(8))
+            }
+        )
+
+        val recentes = concluidos.take(5)
+
+        if (recentes.isEmpty()) {
+            content.addView(
+                cardBox(cardDark, borderBlue).apply {
+                    addView(txt("Ainda não há transferências.", 12f, lightBlue))
+                }
+            )
+        } else {
+            recentes.forEach { content.addView(buildTransacaoRow(it)) }
+        }
+    }
+
+    // ============================================================
+    // CONTROLO DE FILA E USSD
+    // ============================================================
+
+    private fun processarProximoDaFila() {
+        if (filaPausada || pedidoEmCurso != null) {
+            navegarPara(abaAtual)
+            return
+        }
+
+        val proximo = if (filaEspera.isNotEmpty()) filaEspera.removeAt(0) else null
+        if (proximo == null) {
+            navegarPara(abaAtual)
+            return
+        }
+
+        pedidoEmCurso = proximo
+        navegarPara(abaAtual)
+
+        handler.removeCallbacks(watchdogFilaRunnable)
+        handler.postDelayed(watchdogFilaRunnable, 20_000L)
+
+        try {
+            val intentDial = Intent(
+                Intent.ACTION_CALL,
+                Uri.parse("tel:" + Uri.encode("*162#"))
+            ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            startActivity(intentDial)
+        } catch (_: Exception) {
+            interromperPedidoEmCurso(continuarFila = false)
+        }
+    }
+
+    private fun interromperPedidoEmCurso(continuarFila: Boolean = true) {
+        handler.removeCallbacks(watchdogFilaRunnable)
+        val atual = pedidoEmCurso
+        pedidoEmCurso = null
+
+        Toast.makeText(
+            this,
+            if (atual != null) "Pedido ${atual.numeroCliente} interrompido."
+            else "Nenhum pedido em curso para interromper.",
+            Toast.LENGTH_SHORT
+        ).show()
+
+        navegarPara(abaAtual)
+        if (continuarFila && !filaPausada) {
+            processarProximoDaFila()
+        }
+    }
+
+    private fun limparFilaEspera() {
+        val qtd = filaEspera.size
+        filaEspera.clear()
+        Toast.makeText(
+            this,
+            if (qtd > 0) "Fila limpa ($qtd pedido(s) removido(s))."
+            else "A fila de espera já está vazia.",
+            Toast.LENGTH_SHORT
+        ).show()
+        navegarPara(abaAtual)
+    }
+
+    private fun detetarELimparPedidosAtivos() {
+        val temEmCurso = pedidoEmCurso != null
+        val qtdFila = filaEspera.size
+
+        if (!temEmCurso && qtdFila == 0) {
+            Toast.makeText(
+                this,
+                "Detetado: nenhum pedido em curso nem na fila.",
+                Toast.LENGTH_SHORT
+            ).show()
+            return
+        }
+
+        handler.removeCallbacks(watchdogFilaRunnable)
+        pedidoEmCurso = null
+        filaEspera.clear()
+
+        Toast.makeText(
+            this,
+            "Limpo: ${if (temEmCurso) "1 em curso" else "0 em curso"} e $qtdFila na fila.",
+            Toast.LENGTH_SHORT
+        ).show()
+        navegarPara(abaAtual)
+    }
 
     // ============================================================
     // 7. TELA DE HISTÓRICO
@@ -1144,358 +1126,339 @@ private fun telaFilaExecutores() {
         }
     }
 
-// ============================================================
-// 8. TELA DE GESTÃO DOS SIMs
-// ============================================================
+    // ============================================================
+    // 8. TELA DE GESTÃO DOS SIMs
+    // ============================================================
 
-private fun telaSims() {
+    private fun telaSims() {
 
-    // Cabeçalho
-    content.addView(
-        txt("Gestão de SIMs", 21f, white, true)
-    )
-
-    content.addView(
-        txt("Gerir cartões, transferências e configurações", 12f, lightBlue)
-            .apply {
-                setPadding(0, 0, 0, dp(14))
-            }
-    )
-
-    val usadosAtivo =
-        if (simSelecionado == 1) sim1Usados else sim2Usados
-
-    val restantes = (limiteSim - usadosAtivo).coerceAtLeast(0)
-
-    // ========================================================
-    // CARTÃO SIM ATIVO
-    // ========================================================
-
-    val ativoBox = cardBox(
-        Color.rgb(10, 38, 36),
-        green
-    ).apply {
-
-        addView(
-            txt(
-                "SIM $simSelecionado · ACTIVO",
-                18f,
-                green,
-                true
-            )
+        content.addView(
+            txt("Gestão de SIMs", 21f, white, true)
         )
 
-        addView(
-            txt(
-                if (simSelecionado == 1)
-                    "VODACOM · Slot 1"
-                else
-                    "MOVITEL · Slot 2",
-                13f,
-                lightBlue
-            )
+        content.addView(
+            txt("Gerir cartões, transferências e configurações", 12f, lightBlue)
+                .apply {
+                    setPadding(0, 0, 0, dp(14))
+                }
         )
 
-        addView(
-            txt(
-                "Número do cartão",
-                12f,
-                lightBlue
-            ).apply {
-                setPadding(0, dp(12), 0, dp(2))
-            }
-        )
+        val usadosAtivo =
+            if (simSelecionado == 1) sim1Usados else sim2Usados
 
-        addView(
-            txt(
-                "Número não configurado",
-                15f,
-                white,
-                true
-            )
-        )
+        val restantes = (limiteSim - usadosAtivo).coerceAtLeast(0)
 
-        addView(
-            txt(
-                "Transferências de hoje",
-                12f,
-                lightBlue
-            ).apply {
-                setPadding(0, dp(12), 0, dp(4))
-            }
-        )
+        val ativoBox = cardBox(
+            Color.rgb(10, 38, 36),
+            green
+        ).apply {
 
-        addView(
-            txt(
-                "$usadosAtivo / $limiteSim",
-                25f,
-                white,
-                true
-            )
-        )
-
-        addView(
-            txt(
-                "Restam $restantes transferências",
-                13f,
-                green,
-                true
-            ).apply {
-                setPadding(0, dp(4), 0, dp(12))
-            }
-        )
-
-        addView(
-            smallActionBtn("Actualizar SIM activo", cyan) {
-                navegarPara("SIMs")
-            },
-            LinearLayout.LayoutParams(-1, dp(40))
-        )
-    }
-
-    content.addView(ativoBox)
-
-    // ========================================================
-    // SEGUNDO SIM
-    // ========================================================
-
-    content.addView(
-        txt("OUTRO CARTÃO SIM", 13f, lightBlue, true)
-            .apply {
-                setPadding(0, dp(16), 0, dp(8))
-            }
-    )
-
-    val outroNumero = if (simSelecionado == 1) 2 else 1
-    val outrosUsados = if (outroNumero == 1) sim1Usados else sim2Usados
-    val outroAtivo = simSelecionado == outroNumero
-
-    val outroBox = cardBox(
-        cardDark,
-        borderBlue
-    ).apply {
-
-        addView(
-            txt(
-                "SIM $outroNumero",
-                17f,
-                white,
-                true
-            )
-        )
-
-        addView(
-            txt(
-                if (outroNumero == 1)
-                    "VODACOM · Slot 1"
-                else
-                    "MOVITEL · Slot 2",
-                13f,
-                lightBlue
-            )
-        )
-
-        addView(
-            txt(
-                "Transferências: $outrosUsados / $limiteSim",
-                14f,
-                white,
-                true
-            ).apply {
-                setPadding(0, dp(8), 0, dp(10))
-            }
-        )
-
-        if (!outroAtivo) {
             addView(
-                smallActionBtn("Usar este SIM", green) {
-                    simSelecionado = outroNumero
-                    guardarContadores()
+                txt(
+                    "SIM $simSelecionado · ACTIVO",
+                    18f,
+                    green,
+                    true
+                )
+            )
+
+            addView(
+                txt(
+                    if (simSelecionado == 1)
+                        "VODACOM · Slot 1"
+                    else
+                        "MOVITEL · Slot 2",
+                    13f,
+                    lightBlue
+                )
+            )
+
+            addView(
+                txt(
+                    "Número do cartão",
+                    12f,
+                    lightBlue
+                ).apply {
+                    setPadding(0, dp(12), 0, dp(2))
+                }
+            )
+
+            addView(
+                txt(
+                    "Número não configurado",
+                    15f,
+                    white,
+                    true
+                )
+            )
+
+            addView(
+                txt(
+                    "Transferências de hoje",
+                    12f,
+                    lightBlue
+                ).apply {
+                    setPadding(0, dp(12), 0, dp(4))
+                }
+            )
+
+            addView(
+                txt(
+                    "$usadosAtivo / $limiteSim",
+                    25f,
+                    white,
+                    true
+                )
+            )
+
+            addView(
+                txt(
+                    "Restam $restantes transferências",
+                    13f,
+                    green,
+                    true
+                ).apply {
+                    setPadding(0, dp(4), 0, dp(12))
+                }
+            )
+
+            addView(
+                smallActionBtn("Actualizar SIM activo", cyan) {
                     navegarPara("SIMs")
                 },
                 LinearLayout.LayoutParams(-1, dp(40))
             )
         }
 
-        addView(
-            smallActionBtn("Reiniciar contador", yellow) {
-                if (outroNumero == 1) {
-                    sim1Usados = 0
-                } else {
-                    sim2Usados = 0
+        content.addView(ativoBox)
+
+        content.addView(
+            txt("OUTRO CARTÃO SIM", 13f, lightBlue, true)
+                .apply {
+                    setPadding(0, dp(16), 0, dp(8))
                 }
-
-                guardarContadores()
-                navegarPara("SIMs")
-            },
-            LinearLayout.LayoutParams(-1, dp(40)).apply {
-                topMargin = dp(7)
-            }
-        )
-    }
-
-    content.addView(outroBox)
-
-    // ========================================================
-    // CONFIGURAÇÕES
-    // ========================================================
-
-    content.addView(
-        txt("CONFIGURAÇÕES", 13f, lightBlue, true)
-            .apply {
-                setPadding(0, dp(16), 0, dp(8))
-            }
-    )
-
-    val configBox = cardBox(
-        cardDark,
-        borderBlue
-    ).apply {
-
-        addView(
-            txt("Limite diário por SIM", 15f, white, true)
         )
 
-        addView(
-            txt(
-                "$limiteSim transferências por dia",
-                13f,
-                lightBlue
-            ).apply {
-                setPadding(0, dp(4), 0, dp(12))
-            }
-        )
+        val outroNumero = if (simSelecionado == 1) 2 else 1
+        val outrosUsados = if (outroNumero == 1) sim1Usados else sim2Usados
+        val outroAtivo = simSelecionado == outroNumero
 
-        addView(
-            txt("Sobra automática de megabytes", 15f, white, true)
-        )
-
-        addView(
-            txt(
-                "Configuração ainda não activada",
-                13f,
-                yellow
-            ).apply {
-                setPadding(0, dp(4), 0, dp(12))
-            }
-        )
-
-        addView(
-            txt("Reinício dos contadores", 15f, white, true)
-        )
-
-        addView(
-            txt(
-                "Todos os dias às 00:00",
-                13f,
-                lightBlue
-            ).apply {
-                setPadding(0, dp(4), 0, 0)
-            }
-        )
-    }
-
-    content.addView(configBox)
-
-    // ========================================================
-    // DIAGNÓSTICO USSD
-    // ========================================================
-
-    content.addView(
-        txt("DIAGNÓSTICO USSD", 13f, lightBlue, true)
-            .apply {
-                setPadding(0, dp(16), 0, dp(8))
-            }
-    )
-
-    val dadosUssd = getSharedPreferences(
-        "ussd_debug",
-        Context.MODE_PRIVATE
-    )
-
-    val ultimaLeitura = dadosUssd.getString(
-        "ultima_leitura",
-        "Ainda não foi capturado nenhum texto USSD."
-    ) ?: "Sem leitura"
-
-    val ultimaJanela = dadosUssd.getString(
-        "ultima_janela",
-        "Nenhuma janela detectada"
-    ) ?: "Desconhecida"
-
-    val diagnosticoBox = cardBox(
-        cardDark,
-        borderBlue
-    ).apply {
-
-        addView(
-            txt("Estado do serviço", 14f, white, true)
-        )
-
-        addView(
-            txt(
-                "Acessibilidade activada",
-                12f,
-                green
-            ).apply {
-                setPadding(0, dp(5), 0, dp(10))
-            }
-        )
-
-        addView(
-            txt("Aplicação detectada", 13f, white, true)
-        )
-
-        addView(
-            txt(
-                ultimaJanela,
-                11f,
-                cyan
-            ).apply {
-                setPadding(0, dp(4), 0, dp(10))
-            }
-        )
-
-        addView(
-            txt("Último texto capturado", 13f, white, true)
-        )
-
-        addView(
-            txt(
-                ultimaLeitura,
-                12f,
-                lightBlue
-            ).apply {
-                setPadding(0, dp(6), 0, dp(12))
-            }
-        )
-
-        addView(
-            smallActionBtn("↻ Actualizar leitura", cyan) {
-                navegarPara("SIMs")
-            },
-            LinearLayout.LayoutParams(-1, dp(40))
-        )
-    }
-
-    content.addView(diagnosticoBox)
-
-
-    // Aviso final
-    content.addView(
-        txt(
-            if (usadosAtivo >= limiteSim) {
-                "Limite atingido. Seleccione o outro SIM para continuar."
-            } else {
-                "SIM seleccionado: $simSelecionado · Restam $restantes transferências."
-            },
-            12f,
-            if (usadosAtivo >= limiteSim) yellow else lightBlue
+        val outroBox = cardBox(
+            cardDark,
+            borderBlue
         ).apply {
-            setPadding(0, dp(12), 0, dp(16))
+
+            addView(
+                txt(
+                    "SIM $outroNumero",
+                    17f,
+                    white,
+                    true
+                )
+            )
+
+            addView(
+                txt(
+                    if (outroNumero == 1)
+                        "VODACOM · Slot 1"
+                    else
+                        "MOVITEL · Slot 2",
+                    13f,
+                    lightBlue
+                )
+            )
+
+            addView(
+                txt(
+                    "Transferências: $outrosUsados / $limiteSim",
+                    14f,
+                    white,
+                    true
+                ).apply {
+                    setPadding(0, dp(8), 0, dp(10))
+                }
+            )
+
+            if (!outroAtivo) {
+                addView(
+                    smallActionBtn("Usar este SIM", green) {
+                        simSelecionado = outroNumero
+                        guardarContadores()
+                        navegarPara("SIMs")
+                    },
+                    LinearLayout.LayoutParams(-1, dp(40))
+                )
+            }
+
+            addView(
+                smallActionBtn("Reiniciar contador", yellow) {
+                    if (outroNumero == 1) {
+                        sim1Usados = 0
+                    } else {
+                        sim2Usados = 0
+                    }
+
+                    guardarContadores()
+                    navegarPara("SIMs")
+                },
+                LinearLayout.LayoutParams(-1, dp(40)).apply {
+                    topMargin = dp(7)
+                }
+            )
         }
-    )
-}
+
+        content.addView(outroBox)
+
+        content.addView(
+            txt("CONFIGURAÇÕES", 13f, lightBlue, true)
+                .apply {
+                    setPadding(0, dp(16), 0, dp(8))
+                }
+        )
+
+        val configBox = cardBox(
+            cardDark,
+            borderBlue
+        ).apply {
+
+            addView(
+                txt("Limite diário por SIM", 15f, white, true)
+            )
+
+            addView(
+                txt(
+                    "$limiteSim transferências por dia",
+                    13f,
+                    lightBlue
+                ).apply {
+                    setPadding(0, dp(4), 0, dp(12))
+                }
+            )
+
+            addView(
+                txt("Sobra automática de megabytes", 15f, white, true)
+            )
+
+            addView(
+                txt(
+                    "Configuração ainda não activada",
+                    13f,
+                    yellow
+                ).apply {
+                    setPadding(0, dp(4), 0, dp(12))
+                }
+            )
+
+            addView(
+                txt("Reinício dos contadores", 15f, white, true)
+            )
+
+            addView(
+                txt(
+                    "Todos os dias às 00:00",
+                    13f,
+                    lightBlue
+                ).apply {
+                    setPadding(0, dp(4), 0, 0)
+                }
+            )
+        }
+
+        content.addView(configBox)
+
+        content.addView(
+            txt("DIAGNÓSTICO USSD", 13f, lightBlue, true)
+                .apply {
+                    setPadding(0, dp(16), 0, dp(8))
+                }
+        )
+
+        val dadosUssd = getSharedPreferences(
+            "ussd_debug",
+            Context.MODE_PRIVATE
+        )
+
+        val ultimaLeitura = dadosUssd.getString(
+            "ultima_leitura",
+            "Ainda não foi capturado nenhum texto USSD."
+        ) ?: "Sem leitura"
+
+        val ultimaJanela = dadosUssd.getString(
+            "ultima_janela",
+            "Nenhuma janela detectada"
+        ) ?: "Desconhecida"
+
+        val diagnosticoBox = cardBox(
+            cardDark,
+            borderBlue
+        ).apply {
+
+            addView(
+                txt("Estado do serviço", 14f, white, true)
+            )
+
+            addView(
+                txt(
+                    "Acessibilidade activada",
+                    12f,
+                    green
+                ).apply {
+                    setPadding(0, dp(5), 0, dp(10))
+                }
+            )
+
+            addView(
+                txt("Aplicação detectada", 13f, white, true)
+            )
+
+            addView(
+                txt(
+                    ultimaJanela,
+                    11f,
+                    cyan
+                ).apply {
+                    setPadding(0, dp(4), 0, dp(10))
+                }
+            )
+
+            addView(
+                txt("Último texto capturado", 13f, white, true)
+            )
+
+            addView(
+                txt(
+                    ultimaLeitura,
+                    12f,
+                    lightBlue
+                ).apply {
+                    setPadding(0, dp(6), 0, dp(12))
+                }
+            )
+
+            addView(
+                smallActionBtn("↻ Actualizar leitura", cyan) {
+                    navegarPara("SIMs")
+                },
+                LinearLayout.LayoutParams(-1, dp(40))
+            )
+        }
+
+        content.addView(diagnosticoBox)
+
+        content.addView(
+            txt(
+                if (usadosAtivo >= limiteSim) {
+                    "Limite atingido. Seleccione o outro SIM para continuar."
+                } else {
+                    "SIM seleccionado: $simSelecionado · Restam $restantes transferências."
+                },
+                12f,
+                if (usadosAtivo >= limiteSim) yellow else lightBlue
+            ).apply {
+                setPadding(0, dp(12), 0, dp(16))
+            }
+        )
+    }
 
     // ============================================================
     // 9. CONFIGURAÇÕES
