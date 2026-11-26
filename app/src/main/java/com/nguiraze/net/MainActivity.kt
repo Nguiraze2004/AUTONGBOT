@@ -1744,11 +1744,26 @@ class MainActivity : Activity() {
         }
     }
 
+        private fun abrirDefinicoesAcessibilidade() {
+        try {
+            startActivity(
+                Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+        } catch (_: Exception) {
+            Toast.makeText(
+                this,
+                "Não foi possível abrir as definições de acessibilidade.",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+
     private fun dp(valor: Int): Int {
         return (valor * resources.displayMetrics.density).toInt()
     }
 
-    private fun cardBox(corFundo: Int, corBorda: Int): LinearLayout {
+   private fun cardBox(corFundo: Int, corBorda: Int): LinearLayout {
         return LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(12), dp(12), dp(12), dp(12))
