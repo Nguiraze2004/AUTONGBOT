@@ -523,23 +523,21 @@ class MainActivity : Activity() {
             gravity = Gravity.CENTER_VERTICAL
         }
 
-        addViewHeader@ run {
-            val voltar = txt("‹", 28f, white, true).apply {
-                setPadding(0, 0, dp(12), 0)
-                setOnClickListener { navegarPara("Início") }
-            }
-            topBar.addView(voltar)
-
-            val titulo = LinearLayout(this@MainActivity).apply {
-                orientation = LinearLayout.VERTICAL
-                addView(txt("Painel do Executor", 17f, white, true))
-                addView(txt("Este aparelho · Painel local", 11f, lightBlue))
-            }
-
-            topBar.addView(titulo, LinearLayout.LayoutParams(0, -2, 1f))
-            topBar.addView(txt("▣", 20f, lightBlue))
-            topBar.addView(txt("  $", 20f, yellow))
+        val voltar = txt("‹", 28f, white, true).apply {
+            setPadding(0, 0, dp(12), 0)
+            setOnClickListener { navegarPara("Início") }
         }
+        topBar.addView(voltar)
+
+        val titulo = LinearLayout(this@MainActivity).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(txt("Painel do Executor", 17f, white, true))
+            addView(txt("Este aparelho · Painel local", 11f, lightBlue))
+        }
+
+        topBar.addView(titulo, LinearLayout.LayoutParams(0, -2, 1f))
+        topBar.addView(txt("▣", 20f, lightBlue))
+        topBar.addView(txt("  $", 20f, yellow))
 
         content.addView(topBar)
 
@@ -853,102 +851,7 @@ class MainActivity : Activity() {
 
         content.addView(emCurso)
 
-        // FILA DE ESPERA
-        content.addView(
-            sectionHeaderWithTrash(
-                "⌛  FILA DE ESPERA",
-                filaEspera.size
-            ) {
-                if (filaEspera.isNotEmpty()) {
-                    val qtd = filaEspera.size
-                    filaEspera.clear()
-                    Toast.makeText(this, "Fila limpa ($qtd removido(s)).", Toast.LENGTH_SHORT).show()
-                    navegarPara("Fila")
-                } else {
-                    Toast.makeText(this, "A fila já está vazia.", Toast.LENGTH_SHORT).show()
-                }
-            }
-        )
-
-        if (filaEspera.isEmpty()) {
-            content.addView(
-                cardBox(cardDark, borderBlue).apply {
-                    addView(txt("Sem pedidos à espera de Agente livre.", 12f, lightBlue))
-                }
-            )
-        } else {
-            filaEspera.forEachIndexed { index, pedido ->
-                val cardPedido = cardBox(cardDark, borderBlue).apply {
-                    orientation = LinearLayout.HORIZONTAL
-                    gravity = Gravity.CENTER_VERTICAL
-                }
-
-                val infoPedido = LinearLayout(this).apply {
-                    orientation = LinearLayout.VERTICAL
-                    addView(
-                        txt(
-                            "${index + 1}.  ${pedido.numeroCliente}",
-                            13f,
-                            white,
-                            true
-                        )
-                    )
-                    addView(
-                        txt("${pedido.megas} MB · ${pedido.hora}", 11f, lightBlue)
-                    )
-                }
-
-                val btnInterromperPedido = smallActionBtn("⏹", red) {
-                    filaEspera.removeAll { it.id == pedido.id }
-                    Toast.makeText(
-                        this,
-                        "Pedido ${pedido.numeroCliente} interrompido.",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                    navegarPara("Fila")
-                }
-
-                cardPedido.addView(infoPedido, LinearLayout.LayoutParams(0, -2, 1f))
-                cardPedido.addView(
-                    btnInterromperPedido,
-                    LinearLayout.LayoutParams(dp(38), dp(32)).apply {
-                        leftMargin = dp(8)
-                    }
-                )
-
-                content.addView(cardPedido)
-            }
-        }
-
-        // HISTÓRICO RECENTE
-        content.addView(
-            sectionHeaderWithTrash(
-                "▤  HISTÓRICO RECENTE",
-                concluidos.size
-            ) {
-                if (concluidos.isNotEmpty()) {
-                    concluidos.clear()
-                    Toast.makeText(this, "Histórico recente limpo.", Toast.LENGTH_SHORT).show()
-                    navegarPara("Fila")
-                } else {
-                    Toast.makeText(this, "Não há histórico para limpar.", Toast.LENGTH_SHORT).show()
-                }
-            }
-        )
-
-        val recentes = concluidos.take(5)
-
-        if (recentes.isEmpty()) {
-            content.addView(
-                cardBox(cardDark, borderBlue).apply {
-                    addView(txt("Ainda não há transferências.", 12f, lightBlue))
-                }
-            )
-        } else {
-            recentes.forEach { content.addView(buildTransacaoRow(it)) }
-        }
-    }
-    
+        // FILA DE ESPERA E HISTÓRICO RECENTE (MODULAR)
         content.addView(buildFilaEsperaSection())
         content.addView(buildHistoricoRecenteSection())
     }
@@ -1742,6 +1645,7 @@ class MainActivity : Activity() {
     // ============================================================
     // 12. CONTADORES DIÁRIOS DOS SIMs
     // ============================================================
+
     private fun carregarContadores() {
         sim1Usados = preferencias.getInt("sim1_usados", 0)
         sim2Usados = preferencias.getInt("sim2_usados", 0)
