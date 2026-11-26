@@ -92,8 +92,8 @@ class UssdAccessibilityService : AccessibilityService() {
 
         val resposta = escolherRespostaMenu(leitura, numeroCliente, megasPedido) ?: return
 
-        // Evita reenviar exatamente a mesma resposta em menos de 1.5s
-        if (resposta == ultimaRespostaEnviada && agora - horaUltimaResposta < 1500L) {
+        // Evita reenviar exatamente a mesma resposta em menos de 1.8s
+        if (resposta == ultimaRespostaEnviada && agora - horaUltimaResposta < 1800L) {
             return
         }
 
@@ -111,14 +111,18 @@ class UssdAccessibilityService : AccessibilityService() {
         val texto = leitura.lowercase()
 
         return when {
-            // Passo 1: Menu principal -> 8. Serviço de internet
-            (texto.contains("serviço de internet") ||
+            // Passo 1: Menu inicial -> 8. Servicos de Internet
+            (texto.contains("servicos de internet") ||
+                texto.contains("serviços de internet") ||
                 texto.contains("servico de internet") ||
-                texto.contains("internet")) &&
+                texto.contains("serviço de internet") ||
+                texto.contains("8. servico") ||
+                texto.contains("8. serviço")) &&
                 !texto.contains("transferir megas") -> "8"
 
             // Passo 2: Menu internet -> 2. Transferir megas
-            texto.contains("transferir megas") -> "2"
+            texto.contains("transferir megas") ||
+                texto.contains("transferir") -> "2"
 
             // Passo 3: Pedir quantidade / megas / saldo
             texto.contains("megas") ||
@@ -184,6 +188,9 @@ class UssdAccessibilityService : AccessibilityService() {
         nivel: Int
     ): Boolean {
         val campoEditavel = encontrarCampoEditavel(root, nivel) ?: return false
+
+        campoEditavel.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
+
         val args = Bundle().apply {
             putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, texto)
         }
