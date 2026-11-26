@@ -898,7 +898,7 @@ private fun telaFilaExecutores() {
         recentes.forEach { content.addView(buildTransacaoRow(it)) }
     }
 }
-
+}
 
     // ============================================================
     // 7. TELA DE HISTÓRICO
