@@ -153,14 +153,14 @@ class MainActivity : Activity() {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
             setBackgroundColor(Color.rgb(6, 16, 40))
-            setPadding(dp(4), dp(8), dp(4), dp(14))
+            setPadding(dp(4), dp(8), dp(4), dp(18))
         }
 
         root.addView(
             navBar,
             LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
-                dp(78)
+                dp(84)
             )
         )
 
