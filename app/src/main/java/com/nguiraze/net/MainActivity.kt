@@ -703,7 +703,7 @@ private fun telaFilaExecutores() {
         }
     )
 
-    val despachar = smallActionBtn("➤  Despachar para um Agente", green) {
+        val despachar = smallActionBtn("➤  Despachar para um Agente", green) {
 
         val numero = numeroCampo.text.toString().trim()
         val megas = megasCampo.text.toString().trim().toIntOrNull()
@@ -712,7 +712,7 @@ private fun telaFilaExecutores() {
             Toast.makeText(this, "Introduza o número do cliente.", Toast.LENGTH_SHORT).show()
         } else if (numero.length < 9) {
             Toast.makeText(this, "Verifique o número do cliente.", Toast.LENGTH_SHORT).show()
-        } else if (megas == null || megas <= 0) {
+        } else if (megas == null || megas < 100) {
             Toast.makeText(this, "Introduza uma quantidade válida de MB.", Toast.LENGTH_SHORT).show()
         } else {
             val hora = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
@@ -726,13 +726,19 @@ private fun telaFilaExecutores() {
                 )
             )
 
-            Toast.makeText(
-                this,
-                "Pedido registado na fila. Aguardando integração com a operadora.",
-                Toast.LENGTH_LONG
-            ).show()
+            numeroCampo.text.clear()
+            megasCampo.text.clear()
 
-            navegarPara("Fila")
+            if (!filaPausada && pedidoEmCurso == null) {
+                processarProximoDaFila()
+            } else {
+                Toast.makeText(
+                    this,
+                    "Pedido registado na fila.",
+                    Toast.LENGTH_SHORT
+                ).show()
+                navegarPara("Fila")
+            }
         }
     }
 
@@ -742,6 +748,41 @@ private fun telaFilaExecutores() {
     )
 
     content.addView(envioCard)
+
+    // BOTÕES RÁPIDOS DE CONTROLO (LADO A LADO)
+    val linhaControlos = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+    }
+
+    linhaControlos.addView(
+        smallActionBtn("⏹ Interromper", red) {
+            interromperPedidoEmCurso(continuarFila = false)
+        },
+        LinearLayout.LayoutParams(0, dp(38), 1f).apply { rightMargin = dp(4) }
+    )
+
+    linhaControlos.addView(
+        smallActionBtn("🗑 Limpar Fila", yellow) {
+            limparFilaEspera()
+        },
+        LinearLayout.LayoutParams(0, dp(38), 1f).apply {
+            leftMargin = dp(4)
+            rightMargin = dp(4)
+        }
+    )
+
+    linhaControlos.addView(
+        smallActionBtn("⚡ Detetar/Limpar", borderBlue) {
+            detetarELimparPedidosAtivos()
+        },
+        LinearLayout.LayoutParams(0, dp(38), 1f).apply { leftMargin = dp(4) }
+    )
+
+    content.addView(
+        linhaControlos,
+        LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) }
+    )
 
     // EXECUTORES
     content.addView(
@@ -755,7 +796,11 @@ private fun telaFilaExecutores() {
             addView(txt("ES   Este aparelho", 13f, white, true))
             addView(txt("Dispositivo local", 10f, lightBlue))
             addView(
-                txt("● USSD não ligado", 11f, yellow).apply {
+                txt(
+                    if (UssdAccessibilityService.servicoAtivo) "● USSD ligado" else "● USSD não ligado",
+                    11f,
+                    if (UssdAccessibilityService.servicoAtivo) green else yellow
+                ).apply {
                     setPadding(0, dp(8), 0, dp(4))
                 }
             )
