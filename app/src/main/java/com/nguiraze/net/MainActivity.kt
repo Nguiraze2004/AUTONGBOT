@@ -129,7 +129,7 @@ class MainActivity : Activity() {
 
         content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(14), dp(28), dp(14), dp(32))
+            setPadding(dp(14), dp(32), dp(14), dp(24))
         }
 
         scroll.addView(
