@@ -724,26 +724,60 @@ class MainActivity : Activity() {
             } else if (megas == null || megas < 100) {
                 Toast.makeText(this, "O mínimo é 100 MB.", Toast.LENGTH_SHORT).show()
             } else {
+                // <--- PÕE O CÓDIGO NOVO AQUI DENTRO DESTE ELSE --->
                 val hora = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
-
-                filaEspera.add(
-                    PedidoFila(
-                        System.currentTimeMillis().toString(),
-                        numero,
-                        megas,
-                        hora
-                    )
+                val novoPedido = PedidoFila(
+                    id = System.currentTimeMillis().toString(),
+                    numeroCliente = numero,
+                    megas = megas,
+                    hora = hora
                 )
 
-                Toast.makeText(
-                    this,
-                    "Pedido registado na fila. Aguardando integração com a operadora.",
-                    Toast.LENGTH_LONG
-                ).show()
+                val usadosAtivo = if (simSelecionado == 1) sim1Usados else sim2Usados
 
-                navegarPara("Fila")
+                if (usadosAtivo >= limiteSim) {
+                    filaEspera.add(novoPedido)
+                    Toast.makeText(
+                        this,
+                        "Limite do SIM $simSelecionado atingido ($limiteSim). Mude de SIM na aba SIMs.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    navegarPara("Fila")
+                    return@smallActionBtn
+                }
+
+                if (filaPausada) {
+                    filaEspera.add(novoPedido)
+                    Toast.makeText(
+                        this,
+                        "Fila pausada. Pedido guardado na fila de espera.",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    navegarPara("Fila")
+                    return@smallActionBtn
+                }
+
+                if (pedidoEmCurso == null) {
+                    pedidoEmCurso = novoPedido
+                    Toast.makeText(
+                        this,
+                        "A iniciar USSD *162# para ${novoPedido.numeroCliente}...",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    navegarPara("Fila")
+                    iniciarUssd("*162#")
+                } else {
+                    filaEspera.add(novoPedido)
+                    Toast.makeText(
+                        this,
+                        "Já existe uma ordem em curso. Pedido adicionado à fila.",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    navegarPara("Fila")
+                }
             }
         }
+
 
         envioCard.addView(
             despachar,
