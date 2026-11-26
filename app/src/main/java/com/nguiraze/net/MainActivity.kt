@@ -129,7 +129,7 @@ class MainActivity : Activity() {
 
         content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(14), dp(32), dp(14), dp(24))
+            setPadding(dp(14), dp(14), dp(14), dp(24))
         }
 
         scroll.addView(
@@ -153,14 +153,14 @@ class MainActivity : Activity() {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
             setBackgroundColor(Color.rgb(6, 16, 40))
-            setPadding(dp(4), dp(8), dp(4), dp(18))
+            setPadding(dp(4), dp(6), dp(4), dp(6))
         }
 
         root.addView(
             navBar,
             LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
-                dp(84)
+                dp(64)
             )
         )
 
