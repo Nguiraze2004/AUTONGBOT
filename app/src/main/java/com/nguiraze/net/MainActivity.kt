@@ -238,7 +238,7 @@ class MainActivity : Activity() {
 
         header.addView(titleCol, LinearLayout.LayoutParams(0, -2, 1f))
 
-        val ussdLigado = UssdAccessibilityService.servicoAtivo
+        val ussdLigado = acessibilidadeAtiva()
         header.addView(
             pillBadge(
                 if (ussdLigado) "● USSD ligado" else "● USSD não ligado",
@@ -761,15 +761,17 @@ class MainActivity : Activity() {
             }
         )
 
+        val ussdAtivo = acessibilidadeAtiva()
+
         if (executores.isEmpty()) {
             val aparelho = cardBox(cardDark, borderBlue).apply {
                 addView(txt("ES   Este aparelho", 13f, white, true))
                 addView(txt("Dispositivo local", 10f, lightBlue))
                 addView(
                     txt(
-                        if (UssdAccessibilityService.servicoAtivo) "● USSD ligado" else "● USSD não ligado",
+                        if (ussdAtivo) "● USSD ligado" else "● USSD não ligado",
                         11f,
-                        if (UssdAccessibilityService.servicoAtivo) green else yellow
+                        if (ussdAtivo) green else yellow
                     ).apply {
                         setPadding(0, dp(8), 0, dp(4))
                     }
@@ -1348,6 +1350,8 @@ class MainActivity : Activity() {
             "Nenhuma janela detectada"
         ) ?: "Desconhecida"
 
+        val ussdAtivoDiag = acessibilidadeAtiva()
+
         val diagnosticoBox = cardBox(
             cardDark,
             borderBlue
@@ -1359,9 +1363,9 @@ class MainActivity : Activity() {
 
             addView(
                 txt(
-                    if (UssdAccessibilityService.servicoAtivo) "Acessibilidade activada" else "Acessibilidade desligada",
+                    if (ussdAtivoDiag) "Acessibilidade activada" else "Acessibilidade desligada",
                     12f,
-                    if (UssdAccessibilityService.servicoAtivo) green else yellow
+                    if (ussdAtivoDiag) green else yellow
                 ).apply {
                     setPadding(0, dp(5), 0, dp(10))
                 }
@@ -1732,6 +1736,19 @@ class MainActivity : Activity() {
     // ============================================================
     // 14. HELPERS VISUAIS
     // ============================================================
+
+    private fun acessibilidadeAtiva(): Boolean {
+        return try {
+            val servicoEsperado = "$packageName/.UssdAccessibilityService"
+            val habilitados = Settings.Secure.getString(
+                contentResolver,
+                Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+            ) ?: return false
+            habilitados.split(':').any { it.equals(servicoEsperado, ignoreCase = true) }
+        } catch (_: Exception) {
+            false
+        }
+    }
 
     private fun espacoTopoBarraStatus(): Int {
         val id = resources.getIdentifier("status_bar_height", "dimen", "android")
