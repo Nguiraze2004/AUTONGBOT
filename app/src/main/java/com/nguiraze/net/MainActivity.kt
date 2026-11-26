@@ -14,6 +14,7 @@ import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
+import android.provider.Settings
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
