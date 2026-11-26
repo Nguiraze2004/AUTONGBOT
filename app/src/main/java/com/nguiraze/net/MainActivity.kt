@@ -948,6 +948,121 @@ class MainActivity : Activity() {
             recentes.forEach { content.addView(buildTransacaoRow(it)) }
         }
     }
+    
+        content.addView(buildFilaEsperaSection())
+        content.addView(buildHistoricoRecenteSection())
+    }
+
+    private fun buildFilaEsperaSection(): LinearLayout {
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+
+            addView(
+                sectionHeaderWithTrash(
+                    "⌛  FILA DE ESPERA",
+                    filaEspera.size
+                ) {
+                    if (filaEspera.isNotEmpty()) {
+                        val qtd = filaEspera.size
+                        filaEspera.clear()
+                        Toast.makeText(
+                            this@MainActivity,
+                            "Fila limpa ($qtd removido(s)).",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        navegarPara("Fila")
+                    } else {
+                        Toast.makeText(
+                            this@MainActivity,
+                            "A fila já está vazia.",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+            )
+
+            if (filaEspera.isEmpty()) {
+                addView(emptyStateCard("Sem pedidos à espera de Agente livre."))
+            } else {
+                filaEspera.forEachIndexed { index, pedido ->
+                    addView(buildPedidoFilaCard(index, pedido))
+                }
+            }
+        }
+    }
+
+    private fun buildPedidoFilaCard(index: Int, pedido: PedidoFila): LinearLayout {
+        return cardBox(cardDark, borderBlue).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+
+            val infoPedido = LinearLayout(this@MainActivity).apply {
+                orientation = LinearLayout.VERTICAL
+                addView(txt("${index + 1}.  ${pedido.numeroCliente}", 13f, white, true))
+                addView(txt("${pedido.megas} MB · ${pedido.hora}", 11f, lightBlue))
+            }
+
+            val btnInterromperPedido = smallActionBtn("⏹", red) {
+                filaEspera.removeAll { it.id == pedido.id }
+                Toast.makeText(
+                    this@MainActivity,
+                    "Pedido ${pedido.numeroCliente} interrompido.",
+                    Toast.LENGTH_SHORT
+                ).show()
+                navegarPara("Fila")
+            }
+
+            addView(infoPedido, LinearLayout.LayoutParams(0, -2, 1f))
+            addView(
+                btnInterromperPedido,
+                LinearLayout.LayoutParams(dp(38), dp(32)).apply {
+                    leftMargin = dp(8)
+                }
+            )
+        }
+    }
+
+    private fun buildHistoricoRecenteSection(): LinearLayout {
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+
+            addView(
+                sectionHeaderWithTrash(
+                    "▤  HISTÓRICO RECENTE",
+                    concluidos.size
+                ) {
+                    if (concluidos.isNotEmpty()) {
+                        concluidos.clear()
+                        Toast.makeText(
+                            this@MainActivity,
+                            "Histórico recente limpo.",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        navegarPara("Fila")
+                    } else {
+                        Toast.makeText(
+                            this@MainActivity,
+                            "Não há histórico para limpar.",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+            )
+
+            val recentes = concluidos.take(5)
+            if (recentes.isEmpty()) {
+                addView(emptyStateCard("Ainda não há transferências."))
+            } else {
+                recentes.forEach { addView(buildTransacaoRow(it)) }
+            }
+        }
+    }
+
+    private fun emptyStateCard(mensagem: String): LinearLayout {
+        return cardBox(cardDark, borderBlue).apply {
+            addView(txt(mensagem, 12f, lightBlue))
+        }
+    }
 
     // ============================================================
     // 7. TELA DE HISTÓRICO
