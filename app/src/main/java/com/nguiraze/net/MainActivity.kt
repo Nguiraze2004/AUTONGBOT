@@ -1742,7 +1742,6 @@ class MainActivity : Activity() {
     // ============================================================
     // 12. CONTADORES DIÁRIOS DOS SIMs
     // ============================================================
-
     private fun carregarContadores() {
         sim1Usados = preferencias.getInt("sim1_usados", 0)
         sim2Usados = preferencias.getInt("sim2_usados", 0)
@@ -1854,12 +1853,22 @@ class MainActivity : Activity() {
 
     private fun acessibilidadeAtiva(): Boolean {
         return try {
-            val servicoEsperado = "$packageName/.UssdAccessibilityService"
             val habilitados = Settings.Secure.getString(
                 contentResolver,
                 Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
             ) ?: return false
-            habilitados.split(':').any { it.equals(servicoEsperado, ignoreCase = true) }
+
+            val curto = "$packageName/.UssdAccessibilityService"
+            val longo = "$packageName/$packageName.UssdAccessibilityService"
+
+            habilitados
+                .split(':')
+                .map { it.trim() }
+                .any { entrada ->
+                    entrada.equals(curto, ignoreCase = true) ||
+                        entrada.equals(longo, ignoreCase = true) ||
+                        entrada.endsWith(".UssdAccessibilityService", ignoreCase = true)
+                }
         } catch (_: Exception) {
             false
         }
