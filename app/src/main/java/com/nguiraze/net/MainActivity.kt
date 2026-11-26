@@ -1788,6 +1788,20 @@ class MainActivity : Activity() {
     // ============================================================
     // 14. HELPERS VISUAIS
     // ============================================================
+        private fun iniciarUssd(codigoUssd: String) {
+        if (checkSelfPermission(android.Manifest.permission.CALL_PHONE)
+            != android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(arrayOf(android.Manifest.permission.CALL_PHONE), 101)
+            return
+        }
+
+        val uri = android.net.Uri.parse("tel:" + android.net.Uri.encode(codigoUssd))
+        val intent = Intent(Intent.ACTION_CALL, uri).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        startActivity(intent)
+    }
 
     private fun acessibilidadeAtiva(): Boolean {
         return try {
