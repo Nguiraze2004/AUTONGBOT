@@ -703,51 +703,86 @@ private fun telaFilaExecutores() {
         }
     )
 
-        val despachar = smallActionBtn("➤  Despachar para um Agente", green) {
+    private fun telaFilaExecutores() {
 
-        val numero = numeroCampo.text.toString().trim()
-        val megas = megasCampo.text.toString().trim().toIntOrNull()
+    // CABEÇALHO
+    val topBar = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+    }
 
-        if (numero.isEmpty()) {
-            Toast.makeText(this, "Introduza o número do cliente.", Toast.LENGTH_SHORT).show()
-        } else if (numero.length < 9) {
-            Toast.makeText(this, "Verifique o número do cliente.", Toast.LENGTH_SHORT).show()
-        } else if (megas == null || megas < 100) {
-            Toast.makeText(this, "Introduza uma quantidade válida de MB.", Toast.LENGTH_SHORT).show()
-        } else {
-            val hora = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
+    addViewHeader@ run {
+        val voltar = txt("‹", 28f, white, true).apply {
+            setPadding(0, 0, dp(12), 0)
+            setOnClickListener { navegarPara("Início") }
+        }
+        topBar.addView(voltar)
 
-            filaEspera.add(
-                PedidoFila(
-                    System.currentTimeMillis().toString(),
-                    numero,
-                    megas,
-                    hora
-                )
-            )
+        val titulo = LinearLayout(this@MainActivity).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(txt("Painel do Executor", 17f, white, true))
+            addView(txt("Este aparelho · Painel local", 11f, lightBlue))
+        }
 
-            numeroCampo.text.clear()
-            megasCampo.text.clear()
+        topBar.addView(titulo, LinearLayout.LayoutParams(0, -2, 1f))
+        topBar.addView(txt("▣", 20f, lightBlue))
+        topBar.addView(txt("  $", 20f, yellow))
+    }
 
-            if (!filaPausada && pedidoEmCurso == null) {
-                processarProximoDaFila()
-            } else {
-                Toast.makeText(
-                    this,
-                    "Pedido registado na fila.",
-                    Toast.LENGTH_SHORT
-                ).show()
-                navegarPara("Fila")
-            }
+    content.addView(topBar)
+
+    // PESQUISA
+    val pesquisa = EditText(this).apply {
+        hint = "⌕  Buscar por número ou nome do Agente..."
+        setHintTextColor(lightBlue)
+        setTextColor(white)
+        textSize = 13f
+        setSingleLine(true)
+        setPadding(dp(16), 0, dp(12), 0)
+        background = roundRect(cardDark, borderBlue, 28)
+    }
+
+    content.addView(
+        pesquisa,
+        LinearLayout.LayoutParams(-1, dp(46)).apply {
+            topMargin = dp(14)
+            bottomMargin = dp(12)
+        }
+    )
+
+    // INDICADORES
+    val indicadores = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+    }
+
+    fun indicador(valor: String, descricao: String, cor: Int): LinearLayout {
+        return cardBox(cardDark, borderBlue).apply {
+            gravity = Gravity.CENTER
+            addView(txt(valor, 22f, cor, true))
+            addView(txt(descricao, 10f, lightBlue))
         }
     }
 
-    envioCard.addView(
-        despachar,
-        LinearLayout.LayoutParams(-1, dp(42))
+    val online = executores.count { it.online }
+
+    val cards = listOf(
+        indicador("${online}/${executores.size}", "online", green),
+        indicador("${if (pedidoEmCurso != null) 1 else 0}", "em curso", yellow),
+        indicador("${filaEspera.size}", "em espera", cyan),
+        indicador("0", "bloqueados", red)
     )
 
-    content.addView(envioCard)
+    cards.forEachIndexed { index, card ->
+        indicadores.addView(
+            card,
+            LinearLayout.LayoutParams(0, dp(90), 1f).apply {
+                if (index != 0) leftMargin = dp(4)
+                if (index != 3) rightMargin = dp(4)
+            }
+        )
+    }
+
+    content.addView(indicadores)
 
     // BOTÕES RÁPIDOS DE CONTROLO (LADO A LADO)
     val linhaControlos = LinearLayout(this).apply {
@@ -783,6 +818,92 @@ private fun telaFilaExecutores() {
         linhaControlos,
         LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) }
     )
+
+    // TÍTULO ENVIO MANUAL
+    content.addView(
+        txt("▶  ENVIO MANUAL", 11f, lightBlue, true).apply {
+            setPadding(0, dp(12), 0, dp(8))
+        }
+    )
+
+    val envioCard = cardBox(cardDark, borderBlue)
+
+    val numeroCampo = EditText(this).apply {
+        hint = "Número do cliente (ex: 84...)"
+        setHintTextColor(lightBlue)
+        setTextColor(white)
+        textSize = 13f
+        inputType = android.text.InputType.TYPE_CLASS_PHONE
+        setSingleLine(true)
+        setPadding(dp(14), 0, dp(14), 0)
+        background = roundRect(bgDark, borderBlue, 18)
+    }
+
+    val megasCampo = EditText(this).apply {
+        hint = "Megabytes (mínimo 100)"
+        setHintTextColor(lightBlue)
+        setTextColor(white)
+        textSize = 13f
+        inputType = android.text.InputType.TYPE_CLASS_NUMBER
+        setSingleLine(true)
+        setPadding(dp(14), 0, dp(14), 0)
+        background = roundRect(bgDark, borderBlue, 18)
+    }
+
+    envioCard.addView(
+        numeroCampo,
+        LinearLayout.LayoutParams(-1, dp(42)).apply { bottomMargin = dp(8) }
+    )
+
+    envioCard.addView(
+        megasCampo,
+        LinearLayout.LayoutParams(-1, dp(42)).apply { bottomMargin = dp(10) }
+    )
+
+    val despachar = smallActionBtn("➤  Despachar para um Agente", green) {
+        val numero = numeroCampo.text.toString().trim()
+        val megas = megasCampo.text.toString().trim().toIntOrNull()
+
+        if (numero.isEmpty()) {
+            Toast.makeText(this, "Introduza o número do cliente.", Toast.LENGTH_SHORT).show()
+        } else if (numero.length < 9) {
+            Toast.makeText(this, "Verifique o número do cliente.", Toast.LENGTH_SHORT).show()
+        } else if (megas == null || megas < 100) {
+            Toast.makeText(this, "O mínimo é 100 MB.", Toast.LENGTH_SHORT).show()
+        } else {
+            val hora = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
+
+            filaEspera.add(
+                PedidoFila(
+                    System.currentTimeMillis().toString(),
+                    numero,
+                    megas,
+                    hora
+                )
+            )
+
+            numeroCampo.text.clear()
+            megasCampo.text.clear()
+
+            if (!filaPausada && pedidoEmCurso == null) {
+                processarProximoDaFila()
+            } else {
+                Toast.makeText(
+                    this,
+                    "Pedido registado na fila.",
+                    Toast.LENGTH_SHORT
+                ).show()
+                navegarPara("Fila")
+            }
+        }
+    }
+
+    envioCard.addView(
+        despachar,
+        LinearLayout.LayoutParams(-1, dp(42))
+    )
+
+    content.addView(envioCard)
 
     // EXECUTORES
     content.addView(
@@ -878,6 +999,7 @@ private fun telaFilaExecutores() {
                 }
             )
         }
+    }
 
     // HISTÓRICO RECENTE
     content.addView(
@@ -898,7 +1020,7 @@ private fun telaFilaExecutores() {
         recentes.forEach { content.addView(buildTransacaoRow(it)) }
     }
 }
-}
+
 
     // ============================================================
     // 7. TELA DE HISTÓRICO
