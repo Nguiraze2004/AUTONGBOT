@@ -2,9 +2,12 @@ package com.nguiraze.net
 
 import android.accessibilityservice.AccessibilityService
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import java.text.Normalizer
 
 class UssdAccessibilityService : AccessibilityService() {
 
@@ -16,14 +19,35 @@ class UssdAccessibilityService : AccessibilityService() {
         getSharedPreferences("ussd_pedido_ativo", MODE_PRIVATE)
     }
 
-    // 1 = escolher "8", 2 = escolher "2", 3 = enviar megas, 4 = enviar numero, 5 = confirmar "1"
-    private var etapaAtual = 1
-    private var ultimaLeituraProcessada = ""
+    private val handler = Handler(Looper.getMainLooper())
+    private val tempoLimiteEtapaMs = 8_000L
+
+    private var passoAtual = 1 // 1=internet, 2=transferir megas, 3=saldo de dados, 4=recipiente, 5=aguardar resultado
+    private var aguardandoProximaJanelaDesdeMs = 0L
     private var ultimoEnvioMs = 0L
+    private var ultimaLeituraEnviada = ""
     private var ultimoCliqueSimMs = 0L
 
+    private val timeoutRunnable = Runnable {
+        if (!pedidoPrefs.getBoolean("ativo", false)) return@Runnable
+
+        val motivo = if (passoAtual == 5) {
+            "8s esgotados sem 'transferiste com sucesso' (nao concluido)"
+        } else {
+            "8s esgotados aguardando janela do passo $passoAtual"
+        }
+
+        preferencias.edit()
+            .putString("ultimo_erro_ussd", motivo)
+            .putString("ultimo_estado_ussd", if (passoAtual == 5) "INCERTO_OU_FALHA" else "ENCERRADO_TIMEOUT")
+            .apply()
+
+        Log.d("NGUIRAZE_USSD", "Encerrado automaticamente: $motivo")
+        encerrarExecucao("TIMEOUT_8S")
+    }
+
     private val padraoSucesso = Regex(
-        """Transferiste\s+com\s+sucesso\s+(\d+)\s*MB.*?para\s+o\s+numero\s+(258\d{9})""",
+        """transferiste\s+com\s+sucesso\s+(\d+)\s*mb.*?para\s+o\s+numero\s+(258\d{9})""",
         setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)
     )
 
@@ -55,112 +79,130 @@ class UssdAccessibilityService : AccessibilityService() {
             .putBoolean("sessao_ativa", sessaoValida)
             .apply()
 
-        Log.d("NGUIRAZE_USSD", "[$pacote | etapa=$etapaAtual | ativo=$sessaoValida]\n$leitura")
+        Log.d("NGUIRAZE_USSD", "[$pacote | passo=$passoAtual | ativo=$sessaoValida]\n$leitura")
 
         if (!sessaoValida) {
-            etapaAtual = 1
-            ultimaLeituraProcessada = ""
-            if (pedidoAtivo && (agora - timestampPedido > 90_000L)) {
-                pedidoPrefs.edit().putBoolean("ativo", false).apply()
+            cancelarTimer8s()
+            if (pedidoAtivo) {
+                encerrarExecucao("SESSAO_EXPIRADA")
             }
             return
         }
 
-        // Só interage em janelas de telefone / sistema / USSD
-        if (!ehJanelaSistemaOuTelefone(pacote, leitura)) {
-            return
+        // Garante que o cronômetro de 8s está armado para a etapa atual
+        if (aguardandoProximaJanelaDesdeMs == 0L) {
+            armarTimer8s(agora)
         }
 
-        // 1. Seleção de SIM ("Fazer chamadas com")
+        // Escolha de SIM ("Fazer chamadas com")
         if (ehDialogoEscolhaSim(leitura)) {
             if (agora - ultimoCliqueSimMs < 1200L) return
             val simDesejado = pedidoPrefs.getInt("sim", 1).coerceIn(1, 2)
             if (selecionarCartaoSim(raiz, simDesejado)) {
                 ultimoCliqueSimMs = agora
-                etapaAtual = 1
-                ultimaLeituraProcessada = ""
+                passoAtual = 1
+                ultimaLeituraEnviada = ""
+                armarTimer8s(agora)
             }
             return
         }
 
-        // 2. Confirmação final da Vodacom
-        if (leitura.contains("Transferiste", ignoreCase = true)) {
-            val textoLimpo = leitura.replace(Regex("\\s+"), " ").trim()
-            val resultado = padraoSucesso.find(textoLimpo)
-            if (resultado != null) {
-                val megas = resultado.groupValues[1].toIntOrNull() ?: return
-                val numero = resultado.groupValues[2]
-                if (megas > 0) {
-                    val assinatura = "$numero-$megas"
-                    val assinaturaAnterior = preferencias.getString("ultima_assinatura", "")
-                    val horaAnterior = preferencias.getLong("hora_ultima_assinatura", 0L)
+        if (!ehJanelaSistemaOuTelefone(pacote, leitura)) {
+            return
+        }
 
-                    if (assinatura != assinaturaAnterior || agora - horaAnterior >= 10000) {
-                        preferencias.edit()
-                            .putString("ultima_assinatura", assinatura)
-                            .putLong("hora_ultima_assinatura", agora)
-                            .putString("ultimo_resultado", "SUCESSO: $megas MB para $numero")
-                            .apply()
-                    }
+        val normalizada = normalizarTexto(leitura)
+
+        // Etapa 5: Aguarda mensagem final e verifica "transferiste com sucesso"
+        if (passoAtual == 5 || normalizada.contains("transferiste")) {
+            cancelarTimer8s()
+            val textoLimpo = normalizada.replace(Regex("\\s+"), " ").trim()
+
+            if (textoLimpo.contains("transferiste com sucesso")) {
+                val match = padraoSucesso.find(textoLimpo)
+                val megas = match?.groupValues?.getOrNull(1)?.toIntOrNull()
+                    ?: pedidoPrefs.getInt("megas", 0)
+                val numero = match?.groupValues?.getOrNull(2)
+                    ?: (pedidoPrefs.getString("numero", "") ?: "")
+
+                val assinatura = "$numero-$megas"
+                val assinaturaAnterior = preferencias.getString("ultima_assinatura", "")
+                val horaAnterior = preferencias.getLong("hora_ultima_assinatura", 0L)
+
+                if (assinatura != assinaturaAnterior || agora - horaAnterior >= 10_000L) {
+                    preferencias.edit()
+                        .putString("ultima_assinatura", assinatura)
+                        .putLong("hora_ultima_assinatura", agora)
+                        .putString("ultimo_resultado", "CONCLUIDO: $megas MB para $numero")
+                        .putString("ultimo_estado_ussd", "CONCLUIDO")
+                        .apply()
                 }
+                encerrarExecucao("CONCLUIDO")
+            } else {
+                // Não contém "transferiste com sucesso" -> marca como não concluído / outro estado
+                preferencias.edit()
+                    .putString("ultimo_resultado", "NAO_CONCLUIDO: $textoLimpo")
+                    .putString("ultimo_estado_ussd", "SEM_CONFIRMACAO_SUCESSO")
+                    .apply()
+                encerrarExecucao("SEM_CONFIRMACAO_SUCESSO")
             }
-            finalizarSessaoUssd()
             return
         }
 
-        // Evita reprocessar exatamente a mesma leitura em loop rápido
-        if (leitura == ultimaLeituraProcessada && (agora - ultimoEnvioMs) < 2200L) {
+        // Evita reenviar na mesma tela antes de mudar ou antes do intervalo mínimo
+        if (leitura == ultimaLeituraEnviada && (agora - ultimoEnvioMs) < 2000L) {
             return
         }
-
-        // Aguarda um respiro mínimo entre envios para o operador atualizar a tela
-        if ((agora - ultimoEnvioMs) < 900L) {
+        if ((agora - ultimoEnvioMs) < 700L) {
             return
         }
 
         val numeroCliente = (pedidoPrefs.getString("numero", "") ?: "").trim()
         val megasPedido = pedidoPrefs.getInt("megas", 0)
 
-        val resposta = obterRespostaPorSequencia(leitura, numeroCliente, megasPedido) ?: return
+        val resposta = resolverPassoAtual(normalizada, numeroCliente, megasPedido) ?: return
 
         if (preencherEEnviar(raiz, resposta, 0)) {
             ultimoEnvioMs = agora
-            ultimaLeituraProcessada = leitura
-            avancarEtapaAposEnvio()
+            ultimaLeituraEnviada = leitura
+
+            passoAtual = when (passoAtual) {
+                1 -> 2
+                2 -> 3
+                3 -> 4
+                4 -> 5
+                else -> 5
+            }
+
+            // Reinicia os 8 segundos à espera da próxima janela
+            armarTimer8s(agora)
         }
     }
 
-    private fun obterRespostaPorSequencia(
-        leitura: String,
+    private fun resolverPassoAtual(
+        textoNormalizado: String,
         numeroCliente: String,
         megas: Int
     ): String? {
-        val t = leitura.lowercase()
-
-        return when (etapaAtual) {
+        return when (passoAtual) {
             1 -> {
-                if (t.contains("internet") || t.contains("8.") || t.contains("wftti")) {
-                    "8"
-                } else {
-                    null
-                }
+                if (textoNormalizado.contains("servico de internet")) "8" else null
             }
             2 -> {
-                if (t.contains("transferir") || t.contains("megas") || t.contains("2.")) {
-                    "2"
+                if (textoNormalizado.contains("transferir megas")) "2" else null
+            }
+            3 -> {
+                if (textoNormalizado.contains("saldo de dados") && megas > 0) {
+                    megas.toString()
                 } else {
                     null
                 }
             }
-            3 -> {
-                if (megas > 0) megas.toString() else null
-            }
             4 -> {
-                if (numeroCliente.isNotBlank()) numeroCliente else null
-            }
-            5 -> {
-                if (t.contains("confirmar") || t.contains("1.") || t.contains("1 ")) {
-                    "1"
+                if (textoNormalizado.contains("digita o numero do recipiente") &&
+                    numeroCliente.isNotBlank()
+                ) {
+                    numeroCliente
                 } else {
                     null
                 }
@@ -169,22 +211,32 @@ class UssdAccessibilityService : AccessibilityService() {
         }
     }
 
-    private fun avancarEtapaAposEnvio() {
-        etapaAtual = when (etapaAtual) {
-            1 -> 2
-            2 -> 3
-            3 -> 4
-            4 -> 5
-            else -> 5
-        }
+    private fun armarTimer8s(agora: Long) {
+        cancelarTimer8s()
+        aguardandoProximaJanelaDesdeMs = agora
+        handler.postDelayed(timeoutRunnable, tempoLimiteEtapaMs)
     }
 
-    private fun finalizarSessaoUssd() {
-        etapaAtual = 1
-        ultimaLeituraProcessada = ""
+    private fun cancelarTimer8s() {
+        handler.removeCallbacks(timeoutRunnable)
+        aguardandoProximaJanelaDesdeMs = 0L
+    }
+
+    private fun encerrarExecucao(motivo: String) {
+        cancelarTimer8s()
+        passoAtual = 1
+        ultimaLeituraEnviada = ""
+        ultimoEnvioMs = 0L
         pedidoPrefs.edit()
             .putBoolean("ativo", false)
+            .putString("ultimo_fim_motivo", motivo)
             .apply()
+    }
+
+    private fun normalizarTexto(entrada: String): String {
+        val semAcento = Normalizer.normalize(entrada.lowercase(), Normalizer.Form.NFD)
+            .replace(Regex("\\p{InCombiningDiacriticalMarks}+"), "")
+        return semAcento.replace(Regex("\\s+"), " ").trim()
     }
 
     private fun ehJanelaSistemaOuTelefone(pacote: String, leitura: String): Boolean {
@@ -202,7 +254,7 @@ class UssdAccessibilityService : AccessibilityService() {
     }
 
     private fun ehDialogoEscolhaSim(leitura: String): Boolean {
-        val t = leitura.lowercase()
+        val t = normalizarTexto(leitura)
         return t.contains("fazer chamadas com") ||
             t.contains("escolher sim") ||
             t.contains("selecionar sim") ||
@@ -211,10 +263,7 @@ class UssdAccessibilityService : AccessibilityService() {
 
     private fun selecionarCartaoSim(root: AccessibilityNodeInfo, simDesejado: Int): Boolean {
         val rotuloAlvo = if (simDesejado == 2) "SIM 2" else "SIM 1"
-
-        if (clicarPorTexto(root, rotuloAlvo, 0)) {
-            return true
-        }
+        if (clicarPorTexto(root, rotuloAlvo, 0)) return true
 
         val clicaveis = mutableListOf<AccessibilityNodeInfo>()
         coletarClicaveis(root, 0, clicaveis)
@@ -233,7 +282,6 @@ class UssdAccessibilityService : AccessibilityService() {
         if (indice in clicaveis.indices) {
             return clicaveis[indice].performAction(AccessibilityNodeInfo.ACTION_CLICK)
         }
-
         return false
     }
 
@@ -269,12 +317,10 @@ class UssdAccessibilityService : AccessibilityService() {
         nivel: Int
     ): Boolean {
         if (nivel > 8) return false
-
         val textoNo = (node.text?.toString() ?: "") + " " + (node.contentDescription?.toString() ?: "")
         if (textoNo.contains(alvo, ignoreCase = true)) {
             if (clicarNoOuPai(node)) return true
         }
-
         for (i in 0 until node.childCount) {
             val filho = node.getChild(i) ?: continue
             if (clicarPorTexto(filho, alvo, nivel + 1)) return true
@@ -301,7 +347,6 @@ class UssdAccessibilityService : AccessibilityService() {
         nivel: Int
     ): Boolean {
         val campoEditavel = encontrarCampoEditavel(root, nivel) ?: return false
-
         campoEditavel.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
 
         val args = Bundle().apply {
@@ -370,6 +415,12 @@ class UssdAccessibilityService : AccessibilityService() {
     }
 
     override fun onInterrupt() {
+        cancelarTimer8s()
         Log.d("NGUIRAZE_USSD", "Serviço interrompido")
+    }
+
+    override fun onDestroy() {
+        cancelarTimer8s()
+        super.onDestroy()
     }
 }
