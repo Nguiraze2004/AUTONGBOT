@@ -849,6 +849,9 @@ class MainActivity : Activity() {
                 if (pedidoEmCurso != null) {
                     val num = pedidoEmCurso!!.numeroCliente
                     pedidoEmCurso = null
+                    getSharedPreferences("ussd_pedido_ativo", Context.MODE_PRIVATE).edit()
+                        .putBoolean("ativo", false)
+                        .apply()
                     Toast.makeText(this, "Ordem em curso ($num) removida.", Toast.LENGTH_SHORT).show()
                     navegarPara("Fila")
                 } else {
@@ -856,6 +859,8 @@ class MainActivity : Activity() {
                 }
             }
         )
+
+        
 
         val emCurso = cardBox(cardDark, borderBlue)
 
