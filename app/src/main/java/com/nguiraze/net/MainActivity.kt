@@ -759,13 +759,22 @@ class MainActivity : Activity() {
 
                 if (pedidoEmCurso == null) {
                     pedidoEmCurso = novoPedido
+
+                    getSharedPreferences("ussd_pedido_ativo", Context.MODE_PRIVATE).edit()
+                        .putBoolean("ativo", true)
+                        .putString("numero", novoPedido.numeroCliente)
+                        .putInt("megas", novoPedido.megas)
+                        .putInt("sim", simSelecionado)
+                        .putLong("timestamp", System.currentTimeMillis())
+                        .apply()
+
                     Toast.makeText(
                         this,
-                        "A iniciar USSD *162# para ${novoPedido.numeroCliente}...",
+                        "A iniciar USSD *162# para ${novoPedido.numeroCliente} (SIM $simSelecionado)...",
                         Toast.LENGTH_SHORT
                     ).show()
                     navegarPara("Fila")
-                    iniciarUssd("*162#")
+                    iniciarUssd("*162#", simSelecionado)
                 } else {
                     filaEspera.add(novoPedido)
                     Toast.makeText(
