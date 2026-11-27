@@ -1797,7 +1797,7 @@ class MainActivity : Activity() {
     // ============================================================
     // 14. HELPERS VISUAIS
     // ============================================================
-        private fun iniciarUssd(codigoUssd: String) {
+   private fun iniciarUssd(codigoUssd: String, slotSim: Int = simSelecionado) {
         if (checkSelfPermission(android.Manifest.permission.CALL_PHONE)
             != android.content.pm.PackageManager.PERMISSION_GRANTED
         ) {
@@ -1808,9 +1808,15 @@ class MainActivity : Activity() {
         val uri = android.net.Uri.parse("tel:" + android.net.Uri.encode(codigoUssd))
         val intent = Intent(Intent.ACTION_CALL, uri).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            val simIndex = (slotSim - 1).coerceAtLeast(0)
+            putExtra("com.android.phone.extra.slot", simIndex)
+            putExtra("simSlot", simIndex)
+            putExtra("slot", simIndex)
+            putExtra("subscription", simIndex)
         }
         startActivity(intent)
     }
+
 
     private fun acessibilidadeAtiva(): Boolean {
         return try {
