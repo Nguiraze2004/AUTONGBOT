@@ -106,6 +106,14 @@ class MainActivity : Activity() {
         getSharedPreferences("nguiraze_net_dados", Context.MODE_PRIVATE)
     }
 
+    private val ussdDebugPrefs by lazy {
+        getSharedPreferences("ussd_debug", Context.MODE_PRIVATE)
+    }
+
+    private val ussdPedidoPrefs by lazy {
+        getSharedPreferences("ussd_pedido_ativo", Context.MODE_PRIVATE)
+    }
+
     // ============================================================
     // 3. INICIALIZAÇÃO
     // ============================================================
@@ -172,17 +180,21 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        verificarNovoDia()
+        sincronizarEstadoUssd()
+        processarProximaFilaSePossivel()
         if (::content.isInitialized) {
             navegarPara(abaAtual)
         }
     }
 
     // ============================================================
-    // 4. NAVEGAÇÃO
+    // 4. NAVEGAÇÃO E SINCRONIZAÇÃO USSD
     // ============================================================
 
     private fun navegarPara(aba: String) {
         abaAtual = aba
+        sincronizarEstadoUssd()
         content.removeAllViews()
 
         when (aba) {
@@ -197,6 +209,125 @@ class MainActivity : Activity() {
         renderizarBarraInferior()
     }
 
+    private fun sincronizarEstadoUssd() {
+        val ativoNoServico = ussdPedidoPrefs.getBoolean("ativo", false)
+        val estadoUssd = ussdDebugPrefs.getString("ultimo_estado_ussd", "") ?: ""
+        val assinaturaAtual = ussdDebugPrefs.getString("ultima_assinatura", "") ?: ""
+        val ultimaAssinaturaProcessada = preferencias.getString("ultima_assinatura_processada", "") ?: ""
+        val ultimoResultado = ussdDebugPrefs.getString("ultimo_resultado", "") ?: ""
+
+        val pedidoAtual = pedidoEmCurso
+        val simDoPedido = ussdPedidoPrefs.getInt("sim", simSelecionado).coerceIn(1, 2)
+        val horaAtual = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
+
+        if (estadoUssd == "CONCLUIDO" && assinaturaAtual.isNotBlank() && assinaturaAtual != ultimaAssinaturaProcessada) {
+            val partes = assinaturaAtual.split("-")
+            val num = partes.getOrNull(0)?.takeIf { it.isNotBlank() }
+                ?: (pedidoAtual?.numeroCliente ?: (ussdPedidoPrefs.getString("numero", "") ?: "Desconhecido"))
+            val mb = partes.getOrNull(1)?.toIntOrNull()
+                ?: (pedidoAtual?.megas ?: ussdPedidoPrefs.getInt("megas", 0))
+
+            concluidos.add(
+                0,
+                TransacaoConcluida(
+                    numeroCliente = num,
+                    megas = mb,
+                    valorMT = calcularValorEstimadoMT(mb),
+                    hora = pedidoAtual?.hora ?: horaAtual,
+                    simInfo = "SIM $simDoPedido",
+                    status = "Entregue"
+                )
+            )
+
+            if (simDoPedido == 1) sim1Usados++ else sim2Usados++
+            guardarContadores()
+
+            preferencias.edit()
+                .putString("ultima_assinatura_processada", assinaturaAtual)
+                .apply()
+
+            ussdDebugPrefs.edit()
+                .putString("ultimo_estado_ussd", "PROCESSADO")
+                .apply()
+
+            pedidoEmCurso = null
+            Toast.makeText(this, "Transferência concluída: $mb MB para $num", Toast.LENGTH_SHORT).show()
+        } else if (
+            estadoUssd == "SEM_CONFIRMACAO_SUCESSO" ||
+            estadoUssd == "INCERTO_OU_FALHA" ||
+            estadoUssd == "ENCERRADO_TIMEOUT"
+        ) {
+            val num = pedidoAtual?.numeroCliente
+                ?: (ussdPedidoPrefs.getString("numero", "") ?: "").ifBlank { "Desconhecido" }
+            val mb = pedidoAtual?.megas ?: ussdPedidoPrefs.getInt("megas", 0)
+            val statusFinal = if (estadoUssd == "INCERTO_OU_FALHA") "Incerto" else "Falhou"
+            val chaveFalha = "$estadoUssd|$num|$mb|$ultimoResultado"
+            val ultimaChaveFalha = preferencias.getString("ultima_chave_falha_ussd", "") ?: ""
+
+            if (chaveFalha != ultimaChaveFalha && (pedidoAtual != null || mb > 0)) {
+                concluidos.add(
+                    0,
+                    TransacaoConcluida(
+                        numeroCliente = num,
+                        megas = mb,
+                        valorMT = calcularValorEstimadoMT(mb),
+                        hora = pedidoAtual?.hora ?: horaAtual,
+                        simInfo = "SIM $simDoPedido",
+                        status = statusFinal
+                    )
+                )
+                preferencias.edit()
+                    .putString("ultima_chave_falha_ussd", chaveFalha)
+                    .apply()
+            }
+
+            ussdDebugPrefs.edit()
+                .putString("ultimo_estado_ussd", "PROCESSADO")
+                .apply()
+
+            pedidoEmCurso = null
+        } else if (!ativoNoServico && pedidoEmCurso != null) {
+            val timestampPedido = ussdPedidoPrefs.getLong("timestamp", 0L)
+            if (timestampPedido > 0L && System.currentTimeMillis() - timestampPedido > 2_000L) {
+                pedidoEmCurso = null
+            }
+        }
+    }
+
+    private fun calcularValorEstimadoMT(megas: Int): Int {
+        return when {
+            megas <= 0 -> 0
+            megas == 100 -> 10
+            else -> ((megas / 100.0) * 10.0).toInt().coerceAtLeast(10)
+        }
+    }
+
+    private fun processarProximaFilaSePossivel() {
+        if (pedidoEmCurso != null || filaPausada || filaEspera.isEmpty()) return
+
+        val usadosAtivo = if (simSelecionado == 1) sim1Usados else sim2Usados
+        if (usadosAtivo >= limiteSim) return
+
+        val proximo = filaEspera.removeAt(0)
+        pedidoEmCurso = proximo
+
+        ussdPedidoPrefs.edit()
+            .putBoolean("ativo", true)
+            .putString("numero", proximo.numeroCliente)
+            .putInt("megas", proximo.megas)
+            .putInt("sim", simSelecionado)
+            .putLong("timestamp", System.currentTimeMillis())
+            .apply()
+
+        Toast.makeText(
+            this,
+            "A iniciar próximo pedido da fila: ${proximo.numeroCliente} (${proximo.megas} MB)...",
+            Toast.LENGTH_SHORT
+        ).show()
+
+        iniciarUssd("*162#", simSelecionado)
+    }
+
     // ============================================================
     // 5. TELA INICIAL
     // ============================================================
@@ -204,7 +335,7 @@ class MainActivity : Activity() {
     private fun telaInicio() {
         val entreguesHoje = concluidos.filter { it.status == "Entregue" }
         val totalConcluidas = entreguesHoje.size
-        val totalMegas = entreguesHoje.sumBy { it.megas }
+        val totalMegas = entreguesHoje.sumOf { it.megas }
         val gbCalculados = totalMegas / 1024.0
 
         val progresso = if (metaGb > 0) {
@@ -477,6 +608,9 @@ class MainActivity : Activity() {
                     yellow
                 ) {
                     filaPausada = !filaPausada
+                    if (!filaPausada) {
+                        processarProximaFilaSePossivel()
+                    }
                     navegarPara("Início")
                 },
                 LinearLayout.LayoutParams(dp(95), dp(32))
@@ -724,7 +858,6 @@ class MainActivity : Activity() {
             } else if (megas == null || megas < 100) {
                 Toast.makeText(this, "O mínimo é 100 MB.", Toast.LENGTH_SHORT).show()
             } else {
-                // <--- PÕE O CÓDIGO NOVO AQUI DENTRO DESTE ELSE --->
                 val hora = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
                 val novoPedido = PedidoFila(
                     id = System.currentTimeMillis().toString(),
@@ -760,7 +893,7 @@ class MainActivity : Activity() {
                 if (pedidoEmCurso == null) {
                     pedidoEmCurso = novoPedido
 
-                    getSharedPreferences("ussd_pedido_ativo", Context.MODE_PRIVATE).edit()
+                    ussdPedidoPrefs.edit()
                         .putBoolean("ativo", true)
                         .putString("numero", novoPedido.numeroCliente)
                         .putInt("megas", novoPedido.megas)
@@ -786,7 +919,6 @@ class MainActivity : Activity() {
                 }
             }
         }
-
 
         envioCard.addView(
             despachar,
@@ -849,18 +981,17 @@ class MainActivity : Activity() {
                 if (pedidoEmCurso != null) {
                     val num = pedidoEmCurso!!.numeroCliente
                     pedidoEmCurso = null
-                    getSharedPreferences("ussd_pedido_ativo", Context.MODE_PRIVATE).edit()
+                    ussdPedidoPrefs.edit()
                         .putBoolean("ativo", false)
                         .apply()
                     Toast.makeText(this, "Ordem em curso ($num) removida.", Toast.LENGTH_SHORT).show()
+                    processarProximaFilaSePossivel()
                     navegarPara("Fila")
                 } else {
                     Toast.makeText(this, "Nenhuma ordem em curso.", Toast.LENGTH_SHORT).show()
                 }
             }
         )
-
-        
 
         val emCurso = cardBox(cardDark, borderBlue)
 
@@ -883,6 +1014,9 @@ class MainActivity : Activity() {
             val btnPararCurso = smallActionBtn("⏹ Parar", red) {
                 val num = pedidoEmCurso!!.numeroCliente
                 pedidoEmCurso = null
+                ussdPedidoPrefs.edit()
+                    .putBoolean("ativo", false)
+                    .apply()
                 Toast.makeText(this, "Pedido $num interrompido.", Toast.LENGTH_SHORT).show()
                 navegarPara("Fila")
             }
@@ -1401,20 +1535,20 @@ class MainActivity : Activity() {
                 }
         )
 
-        val dadosUssd = getSharedPreferences(
-            "ussd_debug",
-            Context.MODE_PRIVATE
-        )
-
-        val ultimaLeitura = dadosUssd.getString(
+        val ultimaLeitura = ussdDebugPrefs.getString(
             "ultima_leitura",
             "Ainda não foi capturado nenhum texto USSD."
         ) ?: "Sem leitura"
 
-        val ultimaJanela = dadosUssd.getString(
+        val ultimaJanela = ussdDebugPrefs.getString(
             "ultima_janela",
             "Nenhuma janela detectada"
         ) ?: "Desconhecida"
+
+        val ultimoErroUssd = ussdDebugPrefs.getString(
+            "ultimo_erro_ussd",
+            "Nenhum erro registado"
+        ) ?: "Nenhum erro registado"
 
         val ussdAtivoDiag = acessibilidadeAtiva()
 
@@ -1446,6 +1580,20 @@ class MainActivity : Activity() {
                     ultimaJanela,
                     11f,
                     cyan
+                ).apply {
+                    setPadding(0, dp(4), 0, dp(10))
+                }
+            )
+
+            addView(
+                txt("Último detalhe / erro USSD", 13f, white, true)
+            )
+
+            addView(
+                txt(
+                    ultimoErroUssd,
+                    11f,
+                    yellow
                 ).apply {
                     setPadding(0, dp(4), 0, dp(10))
                 }
@@ -1800,9 +1948,10 @@ class MainActivity : Activity() {
     }
 
     // ============================================================
-    // 14. HELPERS VISUAIS
+    // 14. HELPERS VISUAIS E USSD
     // ============================================================
-   private fun iniciarUssd(codigoUssd: String, slotSim: Int = simSelecionado) {
+
+    private fun iniciarUssd(codigoUssd: String, slotSim: Int = simSelecionado) {
         if (checkSelfPermission(android.Manifest.permission.CALL_PHONE)
             != android.content.pm.PackageManager.PERMISSION_GRANTED
         ) {
@@ -1821,7 +1970,6 @@ class MainActivity : Activity() {
         }
         startActivity(intent)
     }
-
 
     private fun acessibilidadeAtiva(): Boolean {
         return try {
