@@ -21,12 +21,15 @@ class UssdAccessibilityService : AccessibilityService() {
 
     private val handler = Handler(Looper.getMainLooper())
     private val tempoLimiteEtapaMs = 8_000L
+    private val atrasoCliqueEnviarMs = 400L
 
-    private var passoAtual = 1 // 1=internet, 2=transferir megas, 3=saldo de dados, 4=recipiente, 5=aguardar resultado
+    // 1 = internet ("8"), 2 = transferir megas ("2"), 3 = saldo de dados (MB), 4 = recipiente (numero), 5 = resultado final ("OK")
+    private var passoAtual = 1
     private var aguardandoProximaJanelaDesdeMs = 0L
     private var ultimoEnvioMs = 0L
     private var ultimaLeituraEnviada = ""
     private var ultimoCliqueSimMs = 0L
+    private var envioEmAndamento = false
 
     private val timeoutRunnable = Runnable {
         if (!pedidoPrefs.getBoolean("ativo", false)) return@Runnable
@@ -81,20 +84,20 @@ class UssdAccessibilityService : AccessibilityService() {
 
         Log.d("NGUIRAZE_USSD", "[$pacote | passo=$passoAtual | ativo=$sessaoValida]\n$leitura")
 
+        // Fora de um despacho real ativo, apenas monitoriza e não mexe em nada
         if (!sessaoValida) {
-            cancelarTimer8s()
+            cancelarTimers()
             if (pedidoAtivo) {
                 encerrarExecucao("SESSAO_EXPIRADA")
             }
             return
         }
 
-        // Garante que o cronômetro de 8s está armado para a etapa atual
         if (aguardandoProximaJanelaDesdeMs == 0L) {
             armarTimer8s(agora)
         }
 
-        // Escolha de SIM ("Fazer chamadas com")
+        // 1. Escolha de SIM ("Fazer chamadas com")
         if (ehDialogoEscolhaSim(leitura)) {
             if (agora - ultimoCliqueSimMs < 1200L) return
             val simDesejado = pedidoPrefs.getInt("sim", 1).coerceIn(1, 2)
@@ -103,6 +106,7 @@ class UssdAccessibilityService : AccessibilityService() {
                 passoAtual = 1
                 ultimaLeituraEnviada = ""
                 armarTimer8s(agora)
+                Log.d("NGUIRAZE_USSD", "SIM $simDesejado selecionado")
             }
             return
         }
@@ -113,10 +117,12 @@ class UssdAccessibilityService : AccessibilityService() {
 
         val normalizada = normalizarTexto(leitura)
 
-        // Etapa 5: Aguarda mensagem final e verifica "transferiste com sucesso"
-        if (passoAtual == 5 || normalizada.contains("transferiste")) {
-            cancelarTimer8s()
+        // 2. Passo 5: Mensagem final -> clica "OK" sempre, com ou sem sucesso
+        if (passoAtual == 5 || normalizada.contains("transferiste") || normalizada.contains("transacao sem sucesso")) {
+            cancelarTimers()
             val textoLimpo = normalizada.replace(Regex("\\s+"), " ").trim()
+
+            clicarBotaoOk(raiz, 0)
 
             if (textoLimpo.contains("transferiste com sucesso")) {
                 val match = padraoSucesso.find(textoLimpo)
@@ -139,7 +145,6 @@ class UssdAccessibilityService : AccessibilityService() {
                 }
                 encerrarExecucao("CONCLUIDO")
             } else {
-                // Não contém "transferiste com sucesso" -> marca como não concluído / outro estado
                 preferencias.edit()
                     .putString("ultimo_resultado", "NAO_CONCLUIDO: $textoLimpo")
                     .putString("ultimo_estado_ussd", "SEM_CONFIRMACAO_SUCESSO")
@@ -149,34 +154,16 @@ class UssdAccessibilityService : AccessibilityService() {
             return
         }
 
-        // Evita reenviar na mesma tela antes de mudar ou antes do intervalo mínimo
-        if (leitura == ultimaLeituraEnviada && (agora - ultimoEnvioMs) < 2000L) {
-            return
-        }
-        if ((agora - ultimoEnvioMs) < 700L) {
-            return
-        }
+        if (envioEmAndamento) return
+        if (leitura == ultimaLeituraEnviada && (agora - ultimoEnvioMs) < 2000L) return
+        if ((agora - ultimoEnvioMs) < 700L) return
 
         val numeroCliente = (pedidoPrefs.getString("numero", "") ?: "").trim()
         val megasPedido = pedidoPrefs.getInt("megas", 0)
 
         val resposta = resolverPassoAtual(normalizada, numeroCliente, megasPedido) ?: return
 
-        if (preencherEEnviar(raiz, resposta, 0)) {
-            ultimoEnvioMs = agora
-            ultimaLeituraEnviada = leitura
-
-            passoAtual = when (passoAtual) {
-                1 -> 2
-                2 -> 3
-                3 -> 4
-                4 -> 5
-                else -> 5
-            }
-
-            // Reinicia os 8 segundos à espera da próxima janela
-            armarTimer8s(agora)
-        }
+        preencherEAguardarEnviar(resposta, leitura, agora)
     }
 
     private fun resolverPassoAtual(
@@ -211,19 +198,83 @@ class UssdAccessibilityService : AccessibilityService() {
         }
     }
 
+    private fun preencherEAguardarEnviar(
+        texto: String,
+        leituraAtual: String,
+        agora: Long
+    ) {
+        val raizAtual = rootInActiveWindow ?: return
+        val campoEditavel = encontrarCampoEditavel(raizAtual, 0)
+        if (campoEditavel == null) {
+            preferencias.edit().putString("ultimo_erro_ussd", "Campo editavel nao encontrado").apply()
+            return
+        }
+
+        envioEmAndamento = true
+        campoEditavel.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
+        campoEditavel.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+
+        val args = Bundle().apply {
+            putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, texto)
+        }
+        val preencheu = campoEditavel.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
+        if (!preencheu) {
+            envioEmAndamento = false
+            preferencias.edit().putString("ultimo_erro_ussd", "Falha ACTION_SET_TEXT ($texto)").apply()
+            return
+        }
+
+        // Espera 400ms antes de clicar em "Enviar"
+        handler.postDelayed({
+            try {
+                if (!pedidoPrefs.getBoolean("ativo", false)) {
+                    envioEmAndamento = false
+                    return@postDelayed
+                }
+
+                val janelaParaEnviar = rootInActiveWindow ?: raizAtual
+                val clicouEnviar = clicarBotaoEnvio(janelaParaEnviar, 0)
+
+                if (clicouEnviar) {
+                    val horaEnvio = System.currentTimeMillis()
+                    ultimoEnvioMs = horaEnvio
+                    ultimaLeituraEnviada = leituraAtual
+                    passoAtual = when (passoAtual) {
+                        1 -> 2
+                        2 -> 3
+                        3 -> 4
+                        4 -> 5
+                        else -> 5
+                    }
+                    preferencias.edit()
+                        .putString("ultimo_erro_ussd", "Enviado '$texto' (400ms)")
+                        .apply()
+                    armarTimer8s(horaEnvio)
+                } else {
+                    preferencias.edit()
+                        .putString("ultimo_erro_ussd", "Botao Enviar nao clicado ($texto)")
+                        .apply()
+                }
+            } finally {
+                envioEmAndamento = false
+            }
+        }, atrasoCliqueEnviarMs)
+    }
+
     private fun armarTimer8s(agora: Long) {
         cancelarTimer8s()
         aguardandoProximaJanelaDesdeMs = agora
         handler.postDelayed(timeoutRunnable, tempoLimiteEtapaMs)
     }
 
-    private fun cancelarTimer8s() {
+    private fun cancelarTimers() {
         handler.removeCallbacks(timeoutRunnable)
         aguardandoProximaJanelaDesdeMs = 0L
     }
 
     private fun encerrarExecucao(motivo: String) {
-        cancelarTimer8s()
+        cancelarTimers()
+        envioEmAndamento = false
         passoAtual = 1
         ultimaLeituraEnviada = ""
         ultimoEnvioMs = 0L
@@ -241,16 +292,22 @@ class UssdAccessibilityService : AccessibilityService() {
 
     private fun ehJanelaSistemaOuTelefone(pacote: String, leitura: String): Boolean {
         val p = pacote.lowercase()
-        val l = leitura.lowercase()
+        val l = normalizarTexto(leitura)
         return p.contains("phone") ||
             p.contains("dialer") ||
             p.contains("incallui") ||
+            p.contains("telecom") ||
             p.contains("stk") ||
             p.contains("android") ||
             l.contains("enviar") ||
             l.contains("cancelar") ||
+            l.contains("servico de internet") ||
+            l.contains("transferir megas") ||
+            l.contains("saldo de dados") ||
+            l.contains("digita o numero do recipiente") ||
             l.contains("fazer chamadas com") ||
-            l.contains("transferiste")
+            l.contains("transferiste") ||
+            l.contains("transacao sem sucesso")
     }
 
     private fun ehDialogoEscolhaSim(leitura: String): Boolean {
@@ -341,23 +398,6 @@ class UssdAccessibilityService : AccessibilityService() {
         return false
     }
 
-    private fun preencherEEnviar(
-        root: AccessibilityNodeInfo,
-        texto: String,
-        nivel: Int
-    ): Boolean {
-        val campoEditavel = encontrarCampoEditavel(root, nivel) ?: return false
-        campoEditavel.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
-
-        val args = Bundle().apply {
-            putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, texto)
-        }
-        val preencheu = campoEditavel.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
-        if (!preencheu) return false
-
-        return clicarBotaoEnvio(root, 0)
-    }
-
     private fun encontrarCampoEditavel(
         node: AccessibilityNodeInfo,
         nivel: Int
@@ -393,6 +433,22 @@ class UssdAccessibilityService : AccessibilityService() {
         return false
     }
 
+    private fun clicarBotaoOk(node: AccessibilityNodeInfo, nivel: Int): Boolean {
+        if (nivel > 8) return false
+
+        val texto = ((node.text?.toString() ?: "") + " " + (node.contentDescription?.toString() ?: ""))
+            .trim()
+        if (texto.equals("OK", ignoreCase = true) && clicarNoOuPai(node)) {
+            return true
+        }
+
+        for (i in 0 until node.childCount) {
+            val filho = node.getChild(i) ?: continue
+            if (clicarBotaoOk(filho, nivel + 1)) return true
+        }
+        return false
+    }
+
     private fun analisarElementos(
         node: AccessibilityNodeInfo,
         nivel: Int,
@@ -415,12 +471,16 @@ class UssdAccessibilityService : AccessibilityService() {
     }
 
     override fun onInterrupt() {
-        cancelarTimer8s()
+        cancelarTimers()
+        handler.removeCallbacksAndMessages(null)
+        envioEmAndamento = false
         Log.d("NGUIRAZE_USSD", "Serviço interrompido")
     }
 
     override fun onDestroy() {
-        cancelarTimer8s()
+        cancelarTimers()
+        handler.removeCallbacksAndMessages(null)
+        envioEmAndamento = false
         super.onDestroy()
     }
 }
