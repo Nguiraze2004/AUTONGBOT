@@ -18,6 +18,7 @@ class UssdAccessibilityService : AccessibilityService() {
 
     private var ultimaRespostaEnviada = ""
     private var horaUltimaResposta = 0L
+    private var ultimoCliqueSim = 0L
 
     private val padraoSucesso = Regex(
         """Transferiste\s+com\s+sucesso\s+(\d+)\s*MB.*?para\s+o\s+numero\s+(258\d{9})""",
@@ -41,20 +42,37 @@ class UssdAccessibilityService : AccessibilityService() {
         val leitura = textos.distinct().joinToString("\n")
         if (leitura.isBlank()) return
 
+        val agora = System.currentTimeMillis()
+        val pedidoAtivo = pedidoPrefs.getBoolean("ativo", false)
+        val timestampPedido = pedidoPrefs.getLong("timestamp", 0L)
+        val sessaoValida = pedidoAtivo && (agora - timestampPedido in 0..90_000L)
+
         preferencias.edit()
             .putString("ultima_leitura", leitura)
             .putString("ultima_janela", pacote)
+            .putBoolean("sessao_ativa", sessaoValida)
             .apply()
 
-        Log.d("NGUIRAZE_USSD", leitura)
+        Log.d("NGUIRAZE_USSD", "[$pacote | ativo=$sessaoValida]\n$leitura")
 
-        // 1. Janela "Fazer chamadas com" -> escolher SIM 1 ou SIM 2
-        if (leitura.contains("Fazer chamadas com", ignoreCase = true)) {
-            val simDesejado = pedidoPrefs.getInt("sim", 1)
-            val alvo = if (simDesejado == 2) "SIM 2" else "SIM 1"
-            if (clicarPorTexto(raiz, alvo, 0)) {
-                return
+        // Se não há pedido real ativo, apenas monitoriza/regista diagnóstico e não toca em nada
+        if (!sessaoValida) {
+            if (pedidoAtivo && (agora - timestampPedido > 90_000L)) {
+                pedidoPrefs.edit().putBoolean("ativo", false).apply()
             }
+            return
+        }
+
+        // 1. Janela de escolha de SIM ("Fazer chamadas com" / seleção de cartão SIM)
+        if (ehDialogoEscolhaSim(leitura)) {
+            if (agora - ultimoCliqueSim < 1200L) return
+
+            val simDesejado = pedidoPrefs.getInt("sim", 1).coerceIn(1, 2)
+            if (selecionarCartaoSim(raiz, simDesejado)) {
+                ultimoCliqueSim = agora
+                Log.d("NGUIRAZE_USSD", "SIM $simDesejado selecionado automaticamente")
+            }
+            return
         }
 
         // 2. Confirmar sucesso da transferência
@@ -66,7 +84,6 @@ class UssdAccessibilityService : AccessibilityService() {
                 val numero = resultado.groupValues[2]
                 if (megas > 0) {
                     val assinatura = "$numero-$megas"
-                    val agora = System.currentTimeMillis()
                     val assinaturaAnterior = preferencias.getString("ultima_assinatura", "")
                     val horaAnterior = preferencias.getLong("hora_ultima_assinatura", 0L)
 
@@ -74,7 +91,10 @@ class UssdAccessibilityService : AccessibilityService() {
                         preferencias.edit()
                             .putString("ultima_assinatura", assinatura)
                             .putLong("hora_ultima_assinatura", agora)
+                            .putString("ultimo_resultado", "SUCESSO: $megas MB para $numero")
                             .apply()
+
+                        pedidoPrefs.edit().putBoolean("ativo", false).apply()
                         Log.d("NGUIRAZE_USSD", "SUCESSO: $megas MB enviados para $numero")
                     }
                 }
@@ -82,17 +102,12 @@ class UssdAccessibilityService : AccessibilityService() {
             return
         }
 
-        // 3. Responder às etapas do menu *162# se houver pedido recente (até 2 min)
-        val agora = System.currentTimeMillis()
-        val timestampPedido = pedidoPrefs.getLong("timestamp", 0L)
-        if (agora - timestampPedido > 120_000L) return
-
+        // 3. Responder às etapas do menu *162#
         val numeroCliente = pedidoPrefs.getString("numero", "") ?: ""
         val megasPedido = pedidoPrefs.getInt("megas", 0)
 
         val resposta = escolherRespostaMenu(leitura, numeroCliente, megasPedido) ?: return
 
-        // Evita reenviar exatamente a mesma resposta em menos de 1.8s
         if (resposta == ultimaRespostaEnviada && agora - horaUltimaResposta < 1800L) {
             return
         }
@@ -100,6 +115,71 @@ class UssdAccessibilityService : AccessibilityService() {
         if (preencherEEnviar(raiz, resposta, 0)) {
             ultimaRespostaEnviada = resposta
             horaUltimaResposta = agora
+        }
+    }
+
+    private fun ehDialogoEscolhaSim(leitura: String): Boolean {
+        val t = leitura.lowercase()
+        return t.contains("fazer chamadas com") ||
+            t.contains("escolher sim") ||
+            t.contains("selecionar sim") ||
+            (t.contains("sim 1") && t.contains("sim 2"))
+    }
+
+    private fun selecionarCartaoSim(root: AccessibilityNodeInfo, simDesejado: Int): Boolean {
+        val rotuloAlvo = if (simDesejado == 2) "SIM 2" else "SIM 1"
+
+        // Tentativa 1: procurar texto direto "SIM 1" ou "SIM 2"
+        if (clicarPorTexto(root, rotuloAlvo, 0)) {
+            return true
+        }
+
+        // Tentativa 2: procurar linha que comece por "1" ou "2" ou contenha o número do slot
+        val clicaveis = mutableListOf<AccessibilityNodeInfo>()
+        coletarClicaveis(root, 0, clicaveis)
+
+        for (item in clicaveis) {
+            val textoItem = coletarTextoDoNo(item).trim()
+            if (simDesejado == 1 && (textoItem.startsWith("1") || textoItem.contains("SIM 1", true))) {
+                if (item.performAction(AccessibilityNodeInfo.ACTION_CLICK)) return true
+            }
+            if (simDesejado == 2 && (textoItem.startsWith("2") || textoItem.contains("SIM 2", true))) {
+                if (item.performAction(AccessibilityNodeInfo.ACTION_CLICK)) return true
+            }
+        }
+
+        // Tentativa 3: fallback por índice na lista de opções clicáveis (0 = SIM 1, 1 = SIM 2)
+        val indice = simDesejado - 1
+        if (indice in clicaveis.indices) {
+            return clicaveis[indice].performAction(AccessibilityNodeInfo.ACTION_CLICK)
+        }
+
+        return false
+    }
+
+    private fun coletarTextoDoNo(node: AccessibilityNodeInfo): String {
+        val sb = StringBuilder()
+        node.text?.let { sb.append(it).append(" ") }
+        node.contentDescription?.let { sb.append(it).append(" ") }
+        for (i in 0 until node.childCount) {
+            val filho = node.getChild(i) ?: continue
+            sb.append(coletarTextoDoNo(filho)).append(" ")
+        }
+        return sb.toString()
+    }
+
+    private fun coletarClicaveis(
+        node: AccessibilityNodeInfo,
+        nivel: Int,
+        lista: MutableList<AccessibilityNodeInfo>
+    ) {
+        if (nivel > 8) return
+        if (node.isClickable && node.isEnabled) {
+            lista.add(node)
+        }
+        for (i in 0 until node.childCount) {
+            val filho = node.getChild(i) ?: continue
+            coletarClicaveis(filho, nivel + 1, lista)
         }
     }
 
@@ -111,7 +191,6 @@ class UssdAccessibilityService : AccessibilityService() {
         val texto = leitura.lowercase()
 
         return when {
-            // Passo 1: Menu inicial -> 8. Servicos de Internet
             (texto.contains("servicos de internet") ||
                 texto.contains("serviços de internet") ||
                 texto.contains("servico de internet") ||
@@ -120,11 +199,9 @@ class UssdAccessibilityService : AccessibilityService() {
                 texto.contains("8. serviço")) &&
                 !texto.contains("transferir megas") -> "8"
 
-            // Passo 2: Menu internet -> 2. Transferir megas
             texto.contains("transferir megas") ||
                 texto.contains("transferir") -> "2"
 
-            // Passo 3: Pedir quantidade / megas / saldo
             texto.contains("megas") ||
                 texto.contains("saldo") ||
                 texto.contains("quantidade") ||
@@ -133,7 +210,6 @@ class UssdAccessibilityService : AccessibilityService() {
                 if (megas > 0) megas.toString() else null
             }
 
-            // Passo 4: Pedir número do recipiente / destino
             texto.contains("recipiente") ||
                 texto.contains("número") ||
                 texto.contains("numero") ||
@@ -142,7 +218,6 @@ class UssdAccessibilityService : AccessibilityService() {
                 numeroCliente.ifBlank { null }
             }
 
-            // Passo 5: Confirmação numérica (quando houver opção 1 para confirmar)
             texto.contains("confirmar") &&
                 (texto.contains("1.") || texto.contains("1 ")) -> "1"
 
