@@ -1,6 +1,12 @@
 package com.nguiraze.net
 
 import android.accessibilityservice.AccessibilityService
+import android.accessibilityservice.GestureDescription
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.graphics.Path
+import android.graphics.Rect
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -17,6 +23,10 @@ class UssdAccessibilityService : AccessibilityService() {
 
     private val pedidoPrefs by lazy {
         getSharedPreferences("ussd_pedido_ativo", MODE_PRIVATE)
+    }
+
+    private val clipboard by lazy {
+        getSystemService(CLIPBOARD_SERVICE) as? ClipboardManager
     }
 
     private val handler = Handler(Looper.getMainLooper())
@@ -197,6 +207,23 @@ class UssdAccessibilityService : AccessibilityService() {
         }
     }
 
+    private fun preencherCampoTexto(campo: AccessibilityNodeInfo, texto: String): Boolean {
+        campo.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
+        campo.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+
+        val args = Bundle().apply {
+            putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, texto)
+        }
+        if (campo.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)) {
+            return true
+        }
+
+        // Fallback via Clipboard + ACTION_PASTE
+        val cm = clipboard ?: return false
+        cm.setPrimaryClip(ClipData.newPlainText("ussd_input", texto))
+        return campo.performAction(AccessibilityNodeInfo.ACTION_PASTE)
+    }
+
     private fun preencherEAguardarEnviar(
         texto: String,
         leituraAtual: String
@@ -209,16 +236,10 @@ class UssdAccessibilityService : AccessibilityService() {
         }
 
         envioEmAndamento = true
-        campoEditavel.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
-        campoEditavel.performAction(AccessibilityNodeInfo.ACTION_CLICK)
-
-        val args = Bundle().apply {
-            putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, texto)
-        }
-        val preencheu = campoEditavel.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
+        val preencheu = preencherCampoTexto(campoEditavel, texto)
         if (!preencheu) {
             envioEmAndamento = false
-            preferencias.edit().putString("ultimo_erro_ussd", "Falha ACTION_SET_TEXT ($texto)").apply()
+            preferencias.edit().putString("ultimo_erro_ussd", "Falha SET_TEXT e PASTE ($texto)").apply()
             return
         }
 
@@ -395,6 +416,22 @@ class UssdAccessibilityService : AccessibilityService() {
         return false
     }
 
+    private fun tocarCoordenadas(x: Float, y: Float): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return false
+        val path = Path().apply { moveTo(x, y) }
+        val gesture = GestureDescription.Builder()
+            .addStroke(GestureDescription.StrokeDescription(path, 0L, 60L))
+            .build()
+        return dispatchGesture(gesture, null, null)
+    }
+
+    private fun tocarCentroDoNo(node: AccessibilityNodeInfo): Boolean {
+        val rect = Rect()
+        node.getBoundsInScreen(rect)
+        if (rect.width() <= 0 || rect.height() <= 0) return false
+        return tocarCoordenadas(rect.exactCenterX(), rect.exactCenterY())
+    }
+
     private fun encontrarCampoEditavel(
         node: AccessibilityNodeInfo,
         nivel: Int
@@ -410,38 +447,39 @@ class UssdAccessibilityService : AccessibilityService() {
         return null
     }
 
-    private fun clicarBotaoEnvio(node: AccessibilityNodeInfo, nivel: Int): Boolean {
-        if (nivel > 8) return false
-
+    private fun encontrarNoPorRotulo(
+        node: AccessibilityNodeInfo,
+        alvos: Set<String>,
+        nivel: Int
+    ): AccessibilityNodeInfo? {
+        if (nivel > 8) return null
         val texto = ((node.text?.toString() ?: "") + " " + (node.contentDescription?.toString() ?: ""))
             .trim()
-        val ehBotaoEnviar = texto.equals("Enviar", true) ||
-            texto.equals("OK", true) ||
-            texto.equals("Send", true)
-
-        if (ehBotaoEnviar && clicarNoOuPai(node)) {
-            return true
+        if (alvos.any { texto.equals(it, ignoreCase = true) }) {
+            return node
         }
-
         for (i in 0 until node.childCount) {
             val filho = node.getChild(i) ?: continue
-            if (clicarBotaoEnvio(filho, nivel + 1)) return true
+            val achado = encontrarNoPorRotulo(filho, alvos, nivel + 1)
+            if (achado != null) return achado
+        }
+        return null
+    }
+
+    private fun clicarBotaoEnvio(node: AccessibilityNodeInfo, nivel: Int): Boolean {
+        val alvo = encontrarNoPorRotulo(node, setOf("Enviar", "OK", "Send"), nivel)
+        if (alvo != null) {
+            if (clicarNoOuPai(alvo)) return true
+            if (tocarCentroDoNo(alvo)) return true
         }
         return false
     }
 
     private fun clicarBotaoOk(node: AccessibilityNodeInfo, nivel: Int): Boolean {
-        if (nivel > 8) return false
-
-        val texto = ((node.text?.toString() ?: "") + " " + (node.contentDescription?.toString() ?: ""))
-            .trim()
-        if (texto.equals("OK", ignoreCase = true) && clicarNoOuPai(node)) {
-            return true
-        }
-
-        for (i in 0 until node.childCount) {
-            val filho = node.getChild(i) ?: continue
-            if (clicarBotaoOk(filho, nivel + 1)) return true
+        val alvo = encontrarNoPorRotulo(node, setOf("OK"), nivel)
+        if (alvo != null) {
+            if (clicarNoOuPai(alvo)) return true
+            if (tocarCentroDoNo(alvo)) return true
         }
         return false
     }
