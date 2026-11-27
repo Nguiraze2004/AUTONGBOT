@@ -82,9 +82,8 @@ class UssdAccessibilityService : AccessibilityService() {
             .putBoolean("sessao_ativa", sessaoValida)
             .apply()
 
-        Log.d("NGUIRAZE_USSD", "[$pacote | passo=$passoAtual | ativo=$sessaoValida]\n$leitura")
+        Log.d("NGUIRAZE_USSD", "[$pacote \vert{} passo=$passoAtual | ativo=$sessaoValida]\n$leitura")
 
-        // Fora de um despacho real ativo, apenas monitoriza e não mexe em nada
         if (!sessaoValida) {
             cancelarTimers()
             if (pedidoAtivo) {
@@ -139,7 +138,7 @@ class UssdAccessibilityService : AccessibilityService() {
                     preferencias.edit()
                         .putString("ultima_assinatura", assinatura)
                         .putLong("hora_ultima_assinatura", agora)
-                        .putString("ultimo_resultado", "CONCLUIDO: $megas MB para $numero")
+                        .putString("ultimo_resultado", "CONCLUIDO: $megas MB para$numero")
                         .putString("ultimo_estado_ussd", "CONCLUIDO")
                         .apply()
                 }
@@ -224,7 +223,6 @@ class UssdAccessibilityService : AccessibilityService() {
             return
         }
 
-        // Espera 400ms antes de clicar em "Enviar"
         handler.postDelayed({
             try {
                 if (!pedidoPrefs.getBoolean("ativo", false)) {
@@ -262,7 +260,7 @@ class UssdAccessibilityService : AccessibilityService() {
     }
 
     private fun armarTimer8s(agora: Long) {
-        cancelarTimer8s()
+        cancelarTimers()
         aguardandoProximaJanelaDesdeMs = agora
         handler.postDelayed(timeoutRunnable, tempoLimiteEtapaMs)
     }
@@ -327,158 +325,4 @@ class UssdAccessibilityService : AccessibilityService() {
 
         for (item in clicaveis) {
             val textoItem = coletarTextoDoNo(item).trim()
-            if (simDesejado == 1 && (textoItem.startsWith("1") || textoItem.contains("SIM 1", true))) {
-                if (item.performAction(AccessibilityNodeInfo.ACTION_CLICK)) return true
-            }
-            if (simDesejado == 2 && (textoItem.startsWith("2") || textoItem.contains("SIM 2", true))) {
-                if (item.performAction(AccessibilityNodeInfo.ACTION_CLICK)) return true
-            }
-        }
-
-        val indice = simDesejado - 1
-        if (indice in clicaveis.indices) {
-            return clicaveis[indice].performAction(AccessibilityNodeInfo.ACTION_CLICK)
-        }
-        return false
-    }
-
-    private fun coletarTextoDoNo(node: AccessibilityNodeInfo): String {
-        val sb = StringBuilder()
-        node.text?.let { sb.append(it).append(" ") }
-        node.contentDescription?.let { sb.append(it).append(" ") }
-        for (i in 0 until node.childCount) {
-            val filho = node.getChild(i) ?: continue
-            sb.append(coletarTextoDoNo(filho)).append(" ")
-        }
-        return sb.toString()
-    }
-
-    private fun coletarClicaveis(
-        node: AccessibilityNodeInfo,
-        nivel: Int,
-        lista: MutableList<AccessibilityNodeInfo>
-    ) {
-        if (nivel > 8) return
-        if (node.isClickable && node.isEnabled) {
-            lista.add(node)
-        }
-        for (i in 0 until node.childCount) {
-            val filho = node.getChild(i) ?: continue
-            coletarClicaveis(filho, nivel + 1, lista)
-        }
-    }
-
-    private fun clicarPorTexto(
-        node: AccessibilityNodeInfo,
-        alvo: String,
-        nivel: Int
-    ): Boolean {
-        if (nivel > 8) return false
-        val textoNo = (node.text?.toString() ?: "") + " " + (node.contentDescription?.toString() ?: "")
-        if (textoNo.contains(alvo, ignoreCase = true)) {
-            if (clicarNoOuPai(node)) return true
-        }
-        for (i in 0 until node.childCount) {
-            val filho = node.getChild(i) ?: continue
-            if (clicarPorTexto(filho, alvo, nivel + 1)) return true
-        }
-        return false
-    }
-
-    private fun clicarNoOuPai(node: AccessibilityNodeInfo): Boolean {
-        var atual: AccessibilityNodeInfo? = node
-        var passos = 0
-        while (atual != null && passos < 4) {
-            if (atual.isClickable) {
-                return atual.performAction(AccessibilityNodeInfo.ACTION_CLICK)
-            }
-            atual = atual.parent
-            passos++
-        }
-        return false
-    }
-
-    private fun encontrarCampoEditavel(
-        node: AccessibilityNodeInfo,
-        nivel: Int
-    ): AccessibilityNodeInfo? {
-        if (nivel > 8) return null
-        if (node.isEditable) return node
-
-        for (i in 0 until node.childCount) {
-            val filho = node.getChild(i) ?: continue
-            val encontrado = encontrarCampoEditavel(filho, nivel + 1)
-            if (encontrado != null) return encontrado
-        }
-        return null
-    }
-
-    private fun clicarBotaoEnvio(node: AccessibilityNodeInfo, nivel: Int): Boolean {
-        if (nivel > 8) return false
-
-        val texto = ((node.text?.toString() ?: "") + " " + (node.contentDescription?.toString() ?: ""))
-            .trim()
-        val ehBotaoEnviar = texto.equals("Enviar", true) ||
-            texto.equals("OK", true) ||
-            texto.equals("Send", true)
-
-        if (ehBotaoEnviar && clicarNoOuPai(node)) {
-            return true
-        }
-
-        for (i in 0 until node.childCount) {
-            val filho = node.getChild(i) ?: continue
-            if (clicarBotaoEnvio(filho, nivel + 1)) return true
-        }
-        return false
-    }
-
-    private fun clicarBotaoOk(node: AccessibilityNodeInfo, nivel: Int): Boolean {
-        if (nivel > 8) return false
-
-        val texto = ((node.text?.toString() ?: "") + " " + (node.contentDescription?.toString() ?: ""))
-            .trim()
-        if (texto.equals("OK", ignoreCase = true) && clicarNoOuPai(node)) {
-            return true
-        }
-
-        for (i in 0 until node.childCount) {
-            val filho = node.getChild(i) ?: continue
-            if (clicarBotaoOk(filho, nivel + 1)) return true
-        }
-        return false
-    }
-
-    private fun analisarElementos(
-        node: AccessibilityNodeInfo,
-        nivel: Int,
-        textos: MutableList<String>
-    ) {
-        if (nivel > 8) return
-
-        node.text?.toString()?.let {
-            if (it.isNotBlank()) textos.add(it)
-        }
-
-        node.contentDescription?.toString()?.let {
-            if (it.isNotBlank()) textos.add(it)
-        }
-
-        for (i in 0 until node.childCount) {
-            val filho = node.getChild(i) ?: continue
-            analisarElementos(filho, nivel + 1, textos)
-        }
-    }
-        override fun onInterrupt() {
-        cancelarTimers()
-        handler.removeCallbacksAndMessages(null)
-        envioEmAndamento = false
-        Log.d("NGUIRAZE_USSD", "Serviço interrompido")
-    }
-
-    override fun onDestroy() {
-        cancelarTimers()
-        handler.removeCallbacksAndMessages(null)
-        envioEmAndamento = false
-        super.onDestroy()
-    }
+            if (simDesejado == 1 && (textoItem.startsWith("1") || textoItem.contains("SIM
