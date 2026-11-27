@@ -182,7 +182,7 @@ class UssdAccessibilityService : AccessibilityService() {
     ): String? {
         return when (passoAtual) {
             1 -> {
-                if (textoNormalizado.contains("servico de internet")) "8" else null
+                if (textoNormalizado.contains("servicos de internet")) "8" else null
             }
             2 -> {
                 if (textoNormalizado.contains("transferir megas")) "2" else null
