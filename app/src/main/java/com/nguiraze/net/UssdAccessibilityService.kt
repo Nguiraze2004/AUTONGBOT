@@ -469,8 +469,7 @@ class UssdAccessibilityService : AccessibilityService() {
             analisarElementos(filho, nivel + 1, textos)
         }
     }
-
-    override fun onInterrupt() {
+        override fun onInterrupt() {
         cancelarTimers()
         handler.removeCallbacksAndMessages(null)
         envioEmAndamento = false
@@ -483,4 +482,3 @@ class UssdAccessibilityService : AccessibilityService() {
         envioEmAndamento = false
         super.onDestroy()
     }
-}
