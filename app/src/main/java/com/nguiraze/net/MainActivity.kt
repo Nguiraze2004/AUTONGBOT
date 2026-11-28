@@ -117,10 +117,6 @@ class MainActivity : Activity() {
         getSharedPreferences("ussd_pedido_ativo", Context.MODE_PRIVATE)
     }
 
-    private val preferencias by lazy {
-    getSharedPreferences("nguiraze_net_dados", Context.MODE_PRIVATE)
-    }
-
     private val ussdDebugPrefs by lazy {
     getSharedPreferences("ussd_debug", Context.MODE_PRIVATE)
     }
