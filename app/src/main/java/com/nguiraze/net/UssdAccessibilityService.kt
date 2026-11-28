@@ -182,7 +182,9 @@ class UssdAccessibilityService : AccessibilityService() {
     ): String? {
         return when (passoAtual) {
             1 -> {
-                if (textoNormalizado.contains("servicos de internet")) "8" else null
+                if (textoNormalizado.contains("servicos de internet") ||
+                    textoNormalizado.contains("servico de internet")
+                ) "8" else null
             }
             2 -> {
                 if (textoNormalizado.contains("transferir megas")) "2" else null
@@ -318,6 +320,7 @@ class UssdAccessibilityService : AccessibilityService() {
             p.contains("android") ||
             l.contains("enviar") ||
             l.contains("cancelar") ||
+            l.contains("servicos de internet") ||
             l.contains("servico de internet") ||
             l.contains("transferir megas") ||
             l.contains("saldo de dados") ||
@@ -405,9 +408,11 @@ class UssdAccessibilityService : AccessibilityService() {
     private fun clicarNoOuPai(node: AccessibilityNodeInfo): Boolean {
         var atual: AccessibilityNodeInfo? = node
         var passos = 0
-        while (atual != null && passos < 4) {
-            if (atual.isClickable) {
-                return atual.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+        while (atual != null && passos < 7) {
+            if (atual.isClickable && atual.isEnabled) {
+                if (atual.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+                    return true
+                }
             }
             atual = atual.parent
             passos++
@@ -466,33 +471,17 @@ class UssdAccessibilityService : AccessibilityService() {
     }
 
     private fun clicarBotaoEnvio(node: AccessibilityNodeInfo, nivel: Int): Boolean {
-        val alvo = encontrarNoPorRotulo(node, setOf("Enviar", "OK", "Send"), nivel)
-        if (alvo != null) {
-            if (clicarNoOuPai(alvo)) return true
-            if (tocarCentroDoNo(alvo)) return true
-        }
-        return false
+        val alvo = encontrarNoPorRotulo(node, setOf("Enviar", "OK", "Send"), nivel) ?: return false
+        val clicouNo = clicarNoOuPai(alvo)
+        val tocouCentro = tocarCentroDoNo(alvo)
+        return clicouNo || tocouCentro
     }
 
     private fun clicarBotaoOk(node: AccessibilityNodeInfo, nivel: Int): Boolean {
-    val alvo = encontrarNoPorRotulo(node, setOf("OK"), nivel)
-
-    if (alvo == null) {
-        Log.d("NGUIRAZE_USSD", "BOTAO OK NAO ENCONTRADO")
-        return false
-    }
-
-    val clicou = clicarNoOuPai(alvo)
-
-    Log.d("NGUIRAZE_USSD", "RESULTADO CLIQUE OK: $clicou")
-
-    if (clicou) return true
-
-    val tocou = tocarCentroDoNo(alvo)
-
-    Log.d("NGUIRAZE_USSD", "RESULTADO TOQUE OK: $tocou")
-
-    return tocou
+        val alvo = encontrarNoPorRotulo(node, setOf("OK"), nivel) ?: return false
+        val clicouNo = clicarNoOuPai(alvo)
+        val tocouCentro = tocarCentroDoNo(alvo)
+        return clicouNo || tocouCentro
     }
 
     private fun analisarElementos(
