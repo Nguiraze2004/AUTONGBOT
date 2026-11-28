@@ -1999,7 +1999,7 @@ private fun telaTabela() {
             background = roundRect(bgTop, green, 18)
 
             setOnClickListener {
-                abrirEditor(null)
+                abrirEditor?.invoke(null)
             }
         }
 
