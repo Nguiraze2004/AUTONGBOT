@@ -2562,119 +2562,443 @@ private fun telaPagamentos() {
 
     val historicoCard = novaSecao(
         "▤  HISTÓRICO DE RECEBIMENTOS",
-        "Comprovativos registados neste dispositivo."
+        "Pesquisa, filtra e administra os comprovativos."
     )
 
-    val historico = prefs.getString(
+    var filtroAtual = "Todos"
+
+    val historicoLista = prefs.getString(
         "pag_historico",
         ""
     ) ?: ""
 
-    val registos = historico.lines().filter {
-        it.isNotBlank()
+    val registos = historicoLista.lines()
+        .filter { it.isNotBlank() }
+        .toMutableList()
+
+    val totalTexto = txt(
+        "Comprovativos: 0",
+        13f,
+        white,
+        true
+    )
+
+    val confirmadoTexto = txt(
+        "Total confirmado: 0 MT",
+        13f,
+        green,
+        true
+    )
+
+    val mpesaTexto = txt(
+        "M-Pesa: 0 MT",
+        12f,
+        Color.rgb(255, 100, 110),
+        true
+    )
+
+    val emolaTexto = txt(
+        "E-Mola: 0 MT",
+        12f,
+        Color.rgb(255, 170, 80),
+        true
+    )
+
+    historicoCard.addView(totalTexto)
+    historicoCard.addView(confirmadoTexto)
+    historicoCard.addView(mpesaTexto)
+    historicoCard.addView(emolaTexto)
+
+    // PESQUISA
+    val pesquisa = EditText(this).apply {
+        hint = "Pesquisar nome, número ou referência..."
+        setTextColor(white)
+        setHintTextColor(lightBlue)
+        textSize = 13f
+        singleLine = true
+        setPadding(dp(12), dp(12), dp(12), dp(12))
+        background = roundRect(bgTop, borderBlue, 12)
+    }
+
+    val listaHistorico = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+    }
+
+    // FILTROS
+    val filtros = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+    }
+
+    fun adicionarFiltro(nome: String) {
+        filtros.addView(
+            smallActionBtn(nome, cyan) {
+                filtroAtual = nome
+                atualizarHistorico()
+            },
+            LinearLayout.LayoutParams(0, -2, 1f)
+        )
+    }
+
+    adicionarFiltro("Todos")
+    adicionarFiltro("M-Pesa")
+    adicionarFiltro("E-Mola")
+
+    historicoCard.addView(
+        txt("Filtrar comprovativos", 12f, lightBlue).apply {
+            setPadding(0, dp(12), 0, dp(5))
+        }
+    )
+
+    historicoCard.addView(filtros)
+
+    historicoCard.addView(
+        txt("Pesquisar", 12f, lightBlue).apply {
+            setPadding(0, dp(12), 0, dp(5))
+        }
+    )
+
+    historicoCard.addView(pesquisa)
+    historicoCard.addView(listaHistorico)
+
+    // BOTÃO LIMPAR HISTÓRICO
+    val limparHistorico = smallActionBtn(
+        "Limpar histórico",
+        red
+    ) {
+        android.app.AlertDialog.Builder(this@MainActivity)
+            .setTitle("Limpar histórico?")
+            .setMessage(
+                "Todos os comprovativos serão eliminados. " +
+                "Esta ação não pode ser desfeita."
+            )
+            .setNegativeButton("Cancelar", null)
+            .setPositiveButton("Limpar") { _, _ ->
+
+                prefs.edit()
+                    .putString("pag_historico", "")
+                    .apply()
+
+                Toast.makeText(
+                    this@MainActivity,
+                    "Histórico limpo.",
+                    Toast.LENGTH_SHORT
+                ).show()
+
+                atualizarHistorico()
+            }
+            .show()
     }
 
     historicoCard.addView(
-        txt(
-            "Total de comprovativos: ${registos.size}",
-            14f,
-            white,
-            true
-        )
+        limparHistorico,
+        LinearLayout.LayoutParams(-1, -2).apply {
+            topMargin = dp(12)
+        }
     )
 
-    historicoCard.addView(
-        txt(
-            "Valores confirmados: 0 MT",
-            13f,
-            green,
-            true
-        )
-    )
-
-    historicoCard.addView(
-        txt(
-            "Os registos novos ficam pendentes até serem verificados.",
-            11f,
-            yellow
-        )
-    )
-
-    if (registos.isEmpty()) {
-
-        historicoCard.addView(
-            txt(
-                "Ainda não existem comprovativos registados.",
-                13f,
-                lightBlue
+    // DECODIFICAR TEXTO GUARDADO
+    fun decodificarPagamento(texto: String): String {
+        return try {
+            String(
+                android.util.Base64.decode(
+                    texto,
+                    android.util.Base64.DEFAULT
+                ),
+                Charsets.UTF_8
             )
-        )
+        } catch (e: Exception) {
+            ""
+        }
+    }
 
-    } else {
+    // VERIFICAR OPERADORA
+    fun eMpesa(nome: String): Boolean {
+        val n = nome.lowercase()
+        return n.contains("mpesa") || n.contains("m-pesa")
+    }
 
-        registos.take(20).forEach { registo ->
+    fun eEmola(nome: String): Boolean {
+        return nome.lowercase().contains("e-mola") ||
+            nome.lowercase().contains("emola")
+    }
+
+    // ATUALIZAR HISTÓRICO
+    fun atualizarHistorico() {
+
+        listaHistorico.removeAllViews()
+
+        var totalConfirmado = 0.0
+        var totalMpesa = 0.0
+        var totalEmola = 0.0
+
+        registos.forEach { registo ->
 
             val partes = registo.split("|")
 
             if (partes.size == 6) {
 
-                val data = partes[0].toLongOrNull() ?: 0L
+                val valor = partes[2]
+                    .replace(",", ".")
+                    .filter { it.isDigit() || it == '.' }
+                    .toDoubleOrNull() ?: 0.0
 
-                val dataTexto = if (data > 0L) {
-                    java.text.SimpleDateFormat(
-                        "dd/MM/yyyy HH:mm",
-                        java.util.Locale.getDefault()
-                    ).format(java.util.Date(data))
-                } else {
-                    "Data desconhecida"
-                }
+                val estado = partes[5].uppercase()
 
-                val pessoa = try {
-                    String(
-                        android.util.Base64.decode(
-                            partes[3],
-                            android.util.Base64.DEFAULT
-                        ),
-                        Charsets.UTF_8
-                    )
-                } catch (e: Exception) {
-                    ""
-                }
-
-                val linha = cardBox(cardNavy, borderBlue)
-
-                linha.addView(
-                    txt(
-                        "${partes[1]}  •  ${partes[2]} MT",
-                        14f,
-                        white,
-                        true
-                    )
+                val confirmado = estado in listOf(
+                    "CONFIRMADO",
+                    "CONFIRMADA",
+                    "RECEBIDO",
+                    "VERIFICADO",
+                    "PAGO"
                 )
 
+                if (confirmado) {
+                    totalConfirmado += valor
+
+                    if (eMpesa(partes[1])) {
+                        totalMpesa += valor
+                    }
+
+                    if (eEmola(partes[1])) {
+                        totalEmola += valor
+                    }
+                }
+            }
+        }
+
+        totalTexto.text = "Comprovativos: ${registos.size}"
+
+        confirmadoTexto.text =
+            "Total confirmado: ${totalConfirmado.toInt()} MT"
+
+        mpesaTexto.text =
+            "M-Pesa: ${totalMpesa.toInt()} MT"
+
+        emolaTexto.text =
+            "E-Mola: ${totalEmola.toInt()} MT"
+
+        val termo = pesquisa.text.toString().trim().lowercase()
+
+        val encontrados = registos.withIndex().filter { (_, registo) ->
+
+            val partes = registo.split("|")
+
+            if (partes.size != 6) {
+                false
+            } else {
+
+                val operadora = partes[1]
+                val pessoa = decodificarPagamento(partes[3])
+                val comprovativo = decodificarPagamento(partes[4])
+
+                val correspondeFiltro = when (filtroAtual) {
+                    "M-Pesa" -> eMpesa(operadora)
+                    "E-Mola" -> eEmola(operadora)
+                    else -> true
+                }
+
+                val correspondePesquisa =
+                    termo.isBlank() ||
+                    pessoa.lowercase().contains(termo) ||
+                    operadora.lowercase().contains(termo) ||
+                    comprovativo.lowercase().contains(termo) ||
+                    partes[2].lowercase().contains(termo)
+
+                correspondeFiltro && correspondePesquisa
+            }
+        }
+
+        if (encontrados.isEmpty()) {
+
+            listaHistorico.addView(
+                txt(
+                    "Nenhum comprovativo encontrado.",
+                    13f,
+                    lightBlue
+                ).apply {
+                    setPadding(0, dp(15), 0, dp(15))
+                }
+            )
+        }
+
+        encontrados.forEach { (indiceOriginal, registo) ->
+
+            val partes = registo.split("|")
+
+            val operadora = partes[1]
+            val valor = partes[2]
+            val pessoa = decodificarPagamento(partes[3])
+            val comprovativo = decodificarPagamento(partes[4])
+            val estado = partes[5].uppercase()
+
+            val confirmado = estado in listOf(
+                "CONFIRMADO",
+                "CONFIRMADA",
+                "RECEBIDO",
+                "VERIFICADO",
+                "PAGO"
+            )
+
+            val corOperadora = when {
+                eMpesa(operadora) -> red
+                eEmola(operadora) -> Color.rgb(255, 155, 65)
+                else -> cyan
+            }
+
+            val fundoOperadora = when {
+                eMpesa(operadora) -> Color.rgb(75, 20, 28)
+                eEmola(operadora) -> Color.rgb(75, 39, 14)
+                else -> Color.rgb(15, 40, 70)
+            }
+
+            val corEstado = if (confirmado) green else yellow
+
+            val linha = cardBox(cardNavy, borderBlue)
+
+            // ETIQUETA COLORIDA DA OPERADORA
+            val etiqueta = TextView(this@MainActivity).apply {
+                text = operadora.uppercase()
+                textSize = 12f
+                setTextColor(corOperadora)
+                setTypeface(null, Typeface.BOLD)
+                gravity = Gravity.CENTER
+                setPadding(dp(10), dp(6), dp(10), dp(6))
+                background = roundRect(
+                    fundoOperadora,
+                    corOperadora,
+                    8
+                )
+            }
+
+            linha.addView(
+                etiqueta,
+                LinearLayout.LayoutParams(-2, -2)
+            )
+
+            linha.addView(
+                txt(
+                    "$valor MT",
+                    18f,
+                    white,
+                    true
+                ).apply {
+                    setPadding(0, dp(8), 0, dp(4))
+                }
+            )
+
+            linha.addView(
+                txt(
+                    "Remetente: ${pessoa.ifBlank { "Não indicado" }}",
+                    12f,
+                    lightBlue
+                )
+            )
+
+            val data = partes[0].toLongOrNull() ?: 0L
+
+            val dataTexto = if (data > 0L) {
+                java.text.SimpleDateFormat(
+                    "dd/MM/yyyy  HH:mm",
+                    java.util.Locale.getDefault()
+                ).format(java.util.Date(data))
+            } else {
+                "Data desconhecida"
+            }
+
+            linha.addView(
+                txt(dataTexto, 11f, lightBlue)
+            )
+
+            linha.addView(
+                txt(
+                    if (confirmado) "✓ CONFIRMADO"
+                    else "● PENDENTE",
+                    12f,
+                    corEstado,
+                    true
+                ).apply {
+                    setPadding(0, dp(6), 0, dp(6))
+                }
+            )
+
+            // REFERÊNCIA OU TEXTO DO COMPROVATIVO
+            val referencia = Regex(
+                "(?i)(?:refer[eê]ncia|reference|ref)" +
+                    "\\s*[:#-]?\\s*([A-Z0-9-]{4,})"
+            ).find(comprovativo)?.groupValues?.getOrNull(1)
+
+            if (!referencia.isNullOrBlank()) {
                 linha.addView(
                     txt(
-                        "Remetente: ${pessoa.ifBlank { "Não indicado" }}",
-                        12f,
+                        "Referência: $referencia",
+                        11f,
                         lightBlue
                     )
                 )
-
-                linha.addView(
-                    txt(dataTexto, 11f, lightBlue)
-                )
-
-                linha.addView(
-                    txt("● PENDENTE", 12f, yellow, true)
-                )
-
-                historicoCard.addView(linha)
             }
+
+            // ELIMINAR SOMENTE PENDENTES
+            if (!confirmado) {
+
+                linha.addView(
+                    smallActionBtn("Eliminar pendente", red) {
+
+                        android.app.AlertDialog.Builder(
+                            this@MainActivity
+                        )
+                            .setTitle("Eliminar comprovativo?")
+                            .setMessage(
+                                "Este comprovativo pendente será removido."
+                            )
+                            .setNegativeButton("Cancelar", null)
+                            .setPositiveButton("Eliminar") { _, _ ->
+
+                                if (indiceOriginal in registos.indices) {
+                                    registos.removeAt(indiceOriginal)
+
+                                    prefs.edit()
+                                        .putString(
+                                            "pag_historico",
+                                            registos.joinToString("\n")
+                                        )
+                                        .apply()
+
+                                    atualizarHistorico()
+                                }
+                            }
+                            .show()
+                    }
+                )
+            }
+
+            listaHistorico.addView(linha)
         }
     }
 
+    pesquisa.addTextChangedListener(
+        object : android.text.TextWatcher {
+            override fun beforeTextChanged(
+                s: CharSequence?, start: Int, count: Int, after: Int
+            ) {}
+
+            override fun onTextChanged(
+                s: CharSequence?, start: Int, before: Int, count: Int
+            ) {
+                atualizarHistorico()
+            }
+
+            override fun afterTextChanged(
+                s: android.text.Editable?
+            ) {}
+        }
+    )
+
+    atualizarHistorico()
+
     content.addView(historicoCard)
 }
+
 
     // ============================================================
     // 10. BARRA DE NAVEGAÇÃO
