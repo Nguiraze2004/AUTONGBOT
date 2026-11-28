@@ -117,6 +117,33 @@ class MainActivity : Activity() {
         getSharedPreferences("ussd_pedido_ativo", Context.MODE_PRIVATE)
     }
 
+    private val preferencias by lazy {
+    getSharedPreferences("nguiraze_net_dados", Context.MODE_PRIVATE)
+    }
+
+    private val ussdDebugPrefs by lazy {
+    getSharedPreferences("ussd_debug", Context.MODE_PRIVATE)
+    }
+
+    private val ussdPedidoPrefs by lazy {
+    getSharedPreferences("ussd_pedido_ativo", Context.MODE_PRIVATE)
+    }
+
+// AVISO DE TRANSFERÊNCIA TERMINADA
+private val ussdTerminadoReceiver = object : BroadcastReceiver() {
+    override fun onReceive(context: Context?, intent: Intent?) {
+
+        if (intent?.action != "com.nguiraze.net.USSD_TERMINADO") return
+
+        sincronizarEstadoUssd()
+        processarProximaFilaSePossivel()
+
+        if (::content.isInitialized) {
+            navegarPara(abaAtual)
+        }
+    }
+}
+
     // ============================================================
     // 3. INICIALIZAÇÃO
     // ============================================================
