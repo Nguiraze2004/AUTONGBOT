@@ -231,18 +231,21 @@ private val ussdTerminadoReceiver = object : BroadcastReceiver() {
     // ============================================================
 
     private fun navegarPara(aba: String) {
-        abaAtual = aba
-        sincronizarEstadoUssd()
-        content.removeAllViews()
+    abaAtual = aba
+    sincronizarEstadoUssd()
+    content.removeAllViews()
 
-        when (aba) {
-            "Início" -> telaInicio()
-            "Fila" -> telaFilaExecutores()
-            "Concluídos" -> telaConcluidos()
-            "SIMs" -> telaSims()
-            "Config" -> telaConfig()
-            else -> telaInicio()
-        }
+    when (aba) {
+        "Início" -> telaInicio()
+        "Fila" -> telaFilaExecutores()
+        "Concluídos" -> telaConcluidos()
+        "SIMs" -> telaSims()
+        "Config" -> telaConfig()
+        "Tabela" -> telaTabela()
+        "Pagamentos" -> telaPagamentos()
+        else -> telaInicio()
+    }
+    }
 
         renderizarBarraInferior()
     }
