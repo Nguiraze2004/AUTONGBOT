@@ -691,26 +691,34 @@ private val ussdTerminadoReceiver = object : BroadcastReceiver() {
     // ============================================================
 
     private fun telaFilaExecutores() {
+        
+// CABEÇALHO
+val topBar = LinearLayout(this).apply {
+    orientation = LinearLayout.HORIZONTAL
+    gravity = Gravity.CENTER_VERTICAL
+}
 
-        // CABEÇALHO
-        val topBar = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-        }
+val voltar = txt("‹", 28f, white, true).apply {
+    setPadding(0, 0, dp(12), 0)
+    setOnClickListener {
+        navegarPara("Início")
+    }
+}
+topBar.addView(voltar)
 
-        val voltar = txt("‹", 28f, white, true).apply {
-            setPadding(0, 0, dp(12), 0)
-            setOnClickListener { navegarPara("Início") }
-        }
-        topBar.addView(voltar)
+val titulo = LinearLayout(this@MainActivity).apply {
+    orientation = LinearLayout.VERTICAL
+    addView(txt("Painel do Executor", 17f, white, true))
+    addView(txt("Este aparelho · Painel local", 11f, lightBlue))
+}
 
-        val titulo = LinearLayout(this@MainActivity).apply {
-            orientation = LinearLayout.VERTICAL
-            addView(txt("Painel do Executor", 17f, white, true))
-            addView(txt("Este aparelho · Painel local", 11f, lightBlue))
-        }
+// TÍTULO OCUPA O ESPAÇO DISPONÍVEL
+topBar.addView(
+    titulo,
+    LinearLayout.LayoutParams(0, -2, 1f)
+)
 
-        // BOTÃO TABELA
+// BOTÃO TABELA
 topBar.addView(
     txt("▣", 20f, lightBlue, true).apply {
         setPadding(dp(8), dp(8), dp(8), dp(8))
@@ -722,7 +730,7 @@ topBar.addView(
 
 // BOTÃO PAGAMENTOS
 topBar.addView(
-    txt("\$", 20f, yellow, true).apply {
+    txt("$", 20f, yellow, true).apply {
         setPadding(dp(8), dp(8), dp(8), dp(8))
         setOnClickListener {
             navegarPara("Pagamentos")
@@ -730,6 +738,9 @@ topBar.addView(
     }
 )
 
+content.addView(topBar)
+
+        
         content.addView(topBar)
 
         // PESQUISA
