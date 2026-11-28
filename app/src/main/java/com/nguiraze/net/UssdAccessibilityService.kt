@@ -210,16 +210,7 @@ class UssdAccessibilityService : AccessibilityService() {
         // 1. Mensagem explícita de sucesso.
         // 2. Mensagem explícita de falha.
         // 3. Janela final com OK, sem campo de texto,
-        //    depois do envio do número e sem indicação de confirmação.
-        val ehTelaFinal =
-            mensagemSucesso ||
-            mensagemFalha ||
-            (
-                passoAtual >= 5 &&
-                temOk &&
-                !temCampoEditavel &&
-                !pareceConfirmacao
-            )
+        //    depois do envio do número e sem indicação de confirmação.   
 
         if (ehTelaFinal && !resultadoJaTratado) {
 
