@@ -2091,7 +2091,7 @@ private fun telaTabela() {
     }
 
     // EDITAR OU ADICIONAR PACOTE
-    fun abrirEditor(indice: Int?) {
+    abrirEditor = { indice ->
 
         val precoCampo = campo("Preço em MT")
         val mbCampo = campo("Quantidade em MB")
