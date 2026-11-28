@@ -218,27 +218,37 @@ private val ussdTerminadoReceiver = object : BroadcastReceiver() {
         }
     }
 
-    override fun onStart() {
-    super.onStart()
+    override fun onResume() {
+        super.onResume()
+        verificarNovoDia()
+        sincronizarEstadoUssd()
+        processarProximaFilaSePossivel()
 
-    val filtro = IntentFilter("com.nguiraze.net.USSD_TERMINADO")
-
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        registerReceiver(
-            ussdTerminadoReceiver,
-            filtro,
-            Context.RECEIVER_NOT_EXPORTED
-        )
-    } else {
-        registerReceiver(ussdTerminadoReceiver, filtro)
+        if (::content.isInitialized) {
+            navegarPara(abaAtual)
+        }
     }
-}
 
-override fun onStop() {
-    unregisterReceiver(ussdTerminadoReceiver)
-    super.onStop()
-}
+    override fun onStart() {
+        super.onStart()
 
+        val filtro = IntentFilter("com.nguiraze.net.USSD_TERMINADO")
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(
+                ussdTerminadoReceiver,
+                filtro,
+                Context.RECEIVER_NOT_EXPORTED
+            )
+        } else {
+            registerReceiver(ussdTerminadoReceiver, filtro)
+        }
+    }
+
+    override fun onStop() {
+        unregisterReceiver(ussdTerminadoReceiver)
+        super.onStop()
+    }
     // ============================================================
     // 4. NAVEGAÇÃO E SINCRONIZAÇÃO USSD
     // ============================================================
