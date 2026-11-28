@@ -1862,7 +1862,7 @@ private fun telaTabela() {
     }
 
     cartao.addView(area)
-
+    var abrirEditor: ((Int?) -> Unit)? = null
     fun atualizarLista() {
         area.removeAllViews()
 
