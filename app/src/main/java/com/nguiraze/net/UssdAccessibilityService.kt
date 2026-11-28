@@ -185,13 +185,6 @@ class UssdAccessibilityService : AccessibilityService() {
 
         val mensagemFalha =
             textoLimpo.contains("transacao sem sucesso")
-        val pareceConfirmacao =
-            textoLimpo.contains("deseja confirmar") ||
-            textoLimpo.contains("pretende confirmar") ||
-            textoLimpo.contains("confirma a transferencia") ||
-            textoLimpo.contains("confirmar transferencia") ||
-            textoLimpo.contains("confirme a transferencia") ||
-            textoLimpo.contains("para confirmar")
 
         val ehTelaFinal =
             mensagemSucesso ||
