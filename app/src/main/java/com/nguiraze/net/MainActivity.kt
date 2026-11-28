@@ -2152,6 +2152,30 @@ private fun telaTabela() {
     content.addView(cartao)
 }
 
+// ============================================================
+// TELA DE PAGAMENTOS
+// ============================================================
+
+private fun telaPagamentos() {
+    content.addView(
+        txt("Pagamentos", 20f, white, true)
+    )
+
+    content.addView(
+        cardBox(cardDark, borderBlue).apply {
+            addView(
+                txt("Painel de pagamentos", 16f, white, true)
+            )
+            addView(
+                txt(
+                    "Aqui ficarão as opções de pagamentos.",
+                    13f,
+                    lightBlue
+                )
+            )
+        }
+    )
+}
     // ============================================================
     // 10. BARRA DE NAVEGAÇÃO
     // ============================================================
