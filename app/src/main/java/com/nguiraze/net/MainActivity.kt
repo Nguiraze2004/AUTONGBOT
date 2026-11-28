@@ -2155,27 +2155,527 @@ private fun telaTabela() {
 // ============================================================
 // TELA DE PAGAMENTOS
 // ============================================================
-
+    
 private fun telaPagamentos() {
+
+    val prefs = preferencias
+
+    // CAMPO DE TEXTO COM GRAVAÇÃO AUTOMÁTICA
+    fun campoPagamento(
+        chave: String,
+        titulo: String,
+        exemplo: String,
+        numero: Boolean = false
+    ): EditText {
+
+        val campo = EditText(this).apply {
+            hint = exemplo
+            setText(prefs.getString(chave, "") ?: "")
+            setTextColor(white)
+            setHintTextColor(lightBlue)
+            textSize = 14f
+            setPadding(dp(12), dp(11), dp(12), dp(11))
+            background = roundRect(bgTop, borderBlue, 12)
+
+            if (numero) {
+                inputType = InputType.TYPE_CLASS_PHONE
+            }
+        }
+
+        campo.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(
+                s: CharSequence?, start: Int, count: Int, after: Int
+            ) {}
+
+            override fun onTextChanged(
+                s: CharSequence?, start: Int, before: Int, count: Int
+            ) {
+                prefs.edit().putString(chave, s.toString()).apply()
+            }
+
+            override fun afterTextChanged(s: android.text.Editable?) {}
+        })
+
+        return campo
+    }
+
+    // CARTÃO DE SECÇÃO
+    fun novaSecao(titulo: String, descricao: String): LinearLayout {
+        val cartao = cardBox(cardDark, borderBlue)
+
+        cartao.addView(
+            txt(titulo, 16f, white, true)
+        )
+
+        cartao.addView(
+            txt(descricao, 12f, lightBlue)
+        )
+
+        return cartao
+    }
+
+    // TÍTULO
     content.addView(
-        txt("Pagamentos", 20f, white, true)
+        txt("Pagamentos", 21f, white, true)
     )
 
     content.addView(
-        cardBox(cardDark, borderBlue).apply {
-            addView(
-                txt("Painel de pagamentos", 16f, white, true)
-            )
-            addView(
-                txt(
-                    "Aqui ficarão as opções de pagamentos.",
-                    13f,
-                    lightBlue
-                )
-            )
+        txt(
+            "Gestão de recebimentos M-Pesa e E-Mola",
+            12f,
+            lightBlue
+        )
+    )
+
+    // =================================================
+    // 1. DADOS DAS OPERADORAS
+    // =================================================
+
+    val dados = novaSecao(
+        "▣  DADOS DAS OPERADORAS",
+        "Configura os números que recebem os pagamentos."
+    )
+
+    dados.addView(
+        txt("M-PESA", 14f, green, true)
+    )
+
+    dados.addView(
+        campoPagamento(
+            "pag_mpesa_numero",
+            "Número M-Pesa",
+            "Ex: 84xxxxxxx",
+            true
+        )
+    )
+
+    dados.addView(
+        campoPagamento(
+            "pag_mpesa_nome",
+            "Nome M-Pesa",
+            "Nome registado na conta"
+        )
+    )
+
+    dados.addView(
+        txt("E-MOLA", 14f, cyan, true).apply {
+            setPadding(0, dp(15), 0, dp(5))
         }
     )
+
+    dados.addView(
+        campoPagamento(
+            "pag_emola_numero",
+            "Número E-Mola",
+            "Ex: 86xxxxxxx",
+            true
+        )
+    )
+
+    dados.addView(
+        campoPagamento(
+            "pag_emola_nome",
+            "Nome E-Mola",
+            "Nome registado na conta"
+        )
+    )
+
+    content.addView(dados)
+
+    // =================================================
+    // 2. VINCULAÇÃO DAS OPERADORAS
+    // =================================================
+
+    val vinculacao = novaSecao(
+        "🔗  VERIFICAÇÃO AUTOMÁTICA",
+        "Estado de ligação das contas de pagamento."
+    )
+
+    fun linhaVinculacao(
+        nome: String,
+        chave: String,
+        cor: Int
+    ) {
+        val linha = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, dp(12), 0, dp(5))
+        }
+
+        val informacao = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+
+        informacao.addView(
+            txt(nome, 14f, white, true)
+        )
+
+        informacao.addView(
+            txt(
+                "● Não vinculado",
+                12f,
+                yellow
+            )
+        )
+
+        linha.addView(
+            informacao,
+            LinearLayout.LayoutParams(0, -2, 1f)
+        )
+
+        linha.addView(
+            smallActionBtn("Vincular", cor) {
+                Toast.makeText(
+                    this@MainActivity,
+                    "A ligação automática ainda precisa de integração.",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        )
+
+        vinculacao.addView(linha)
+    }
+
+    linhaVinculacao("M-Pesa", "mpesa", green)
+    linhaVinculacao("E-Mola", "emola", cyan)
+
+    content.addView(vinculacao)
+
+    // =================================================
+    // 3. OPÇÕES AUTOMÁTICAS
+    // =================================================
+
+    val opcoes = novaSecao(
+        "⚙  OPÇÕES AUTOMÁTICAS",
+        "Define como o sistema deverá trabalhar."
+    )
+
+    fun adicionarOpcao(
+        titulo: String,
+        descricao: String,
+        chave: String
+    ) {
+        val linha = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, dp(10), 0, dp(10))
+        }
+
+        val textos = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+
+        textos.addView(
+            txt(titulo, 13f, white, true)
+        )
+
+        textos.addView(
+            txt(descricao, 11f, lightBlue)
+        )
+
+        linha.addView(
+            textos,
+            LinearLayout.LayoutParams(0, -2, 1f)
+        )
+
+        val interruptor = android.widget.Switch(this).apply {
+            isChecked = prefs.getBoolean(chave, false)
+
+            setOnCheckedChangeListener { _, marcado ->
+                prefs.edit().putBoolean(chave, marcado).apply()
+            }
+        }
+
+        linha.addView(interruptor)
+        opcoes.addView(linha)
+    }
+
+    adicionarOpcao(
+        "Confirmar número de destino",
+        "Verificar o número indicado no pagamento.",
+        "pag_confirmar_destino"
+    )
+
+    adicionarOpcao(
+        "Processar E-Mola pelo conteúdo",
+        "Permitir leitura do conteúdo da transação.",
+        "pag_emola_conteudo"
+    )
+
+    adicionarOpcao(
+        "SMS de recuperação",
+        "Usar SMS quando não houver confirmação no grupo.",
+        "pag_sms_resgate"
+    )
+
+    content.addView(opcoes)
+
+    // =================================================
+    // 4. REGISTAR COMPROVATIVO
+    // =================================================
+
+    val manual = novaSecao(
+        "▤  COMPROVATIVO MANUAL",
+        "Regista um comprovativo para análise."
+    )
+
+    val operadora = campoPagamento(
+        "pag_manual_operadora",
+        "Operadora",
+        "M-Pesa ou E-Mola"
+    )
+
+    val valor = campoPagamento(
+        "pag_manual_valor",
+        "Valor recebido",
+        "Ex: 100 MT",
+        true
+    )
+
+    val remetente = campoPagamento(
+        "pag_manual_remetente",
+        "Número ou nome do remetente",
+        "Número ou nome"
+    )
+
+    val comprovativo = EditText(this).apply {
+        hint = "Cola aqui o texto do comprovativo..."
+        setTextColor(white)
+        setHintTextColor(lightBlue)
+        textSize = 13f
+        minLines = 5
+        gravity = Gravity.TOP
+        setPadding(dp(12), dp(12), dp(12), dp(12))
+        background = roundRect(bgTop, borderBlue, 12)
+        inputType = InputType.TYPE_CLASS_TEXT or
+            InputType.TYPE_TEXT_FLAG_MULTI_LINE
+    }
+
+    manual.addView(
+        txt("Operadora", 12f, lightBlue)
+    )
+    manual.addView(operadora)
+
+    manual.addView(
+        txt("Valor (MT)", 12f, lightBlue).apply {
+            setPadding(0, dp(8), 0, 0)
+        }
+    )
+    manual.addView(valor)
+
+    manual.addView(
+        txt("Remetente", 12f, lightBlue).apply {
+            setPadding(0, dp(8), 0, 0)
+        }
+    )
+    manual.addView(remetente)
+
+    manual.addView(
+        txt("Texto do comprovativo", 12f, lightBlue).apply {
+            setPadding(0, dp(8), 0, 0)
+        }
+    )
+    manual.addView(comprovativo)
+
+    val registar = TextView(this).apply {
+        text = "REGISTAR COMPROVATIVO"
+        textSize = 14f
+        setTextColor(white)
+        setTypeface(null, Typeface.BOLD)
+        gravity = Gravity.CENTER
+        setPadding(0, dp(16), 0, dp(16))
+        background = roundRect(red, red, 14)
+
+        setOnClickListener {
+
+            val texto = comprovativo.text.toString().trim()
+            val nomeOperadora = operadora.text.toString().trim()
+            val montante = valor.text.toString().trim()
+            val pessoa = remetente.text.toString().trim()
+
+            if (
+                texto.isBlank() ||
+                nomeOperadora.isBlank() ||
+                montante.isBlank()
+            ) {
+                Toast.makeText(
+                    this@MainActivity,
+                    "Preenche a operadora, o valor e o comprovativo.",
+                    Toast.LENGTH_LONG
+                ).show()
+                return@setOnClickListener
+            }
+
+            val historico = prefs.getString(
+                "pag_historico",
+                ""
+            ) ?: ""
+
+            val textoSeguro = android.util.Base64.encodeToString(
+                texto.toByteArray(Charsets.UTF_8),
+                android.util.Base64.NO_WRAP
+            )
+
+            val pessoaSegura = android.util.Base64.encodeToString(
+                pessoa.toByteArray(Charsets.UTF_8),
+                android.util.Base64.NO_WRAP
+            )
+
+            val novo = listOf(
+                System.currentTimeMillis().toString(),
+                nomeOperadora,
+                montante,
+                pessoaSegura,
+                textoSeguro,
+                "PENDENTE"
+            ).joinToString("|")
+
+            val atualizado = if (historico.isBlank()) {
+                novo
+            } else {
+                "$novo\n$historico"
+            }
+
+            prefs.edit()
+                .putString("pag_historico", atualizado)
+                .remove("pag_manual_operadora")
+                .remove("pag_manual_valor")
+                .remove("pag_manual_remetente")
+                .apply()
+
+            Toast.makeText(
+                this@MainActivity,
+                "Comprovativo registado como pendente.",
+                Toast.LENGTH_LONG
+            ).show()
+
+            navegarPara("Pagamentos")
+        }
+    }
+
+    manual.addView(registar)
+    content.addView(manual)
+
+    // =================================================
+    // 5. HISTÓRICO DE COMPROVATIVOS
+    // =================================================
+
+    val historicoCard = novaSecao(
+        "▤  HISTÓRICO DE RECEBIMENTOS",
+        "Comprovativos registados neste dispositivo."
+    )
+
+    val historico = prefs.getString(
+        "pag_historico",
+        ""
+    ) ?: ""
+
+    val registos = historico.lines().filter {
+        it.isNotBlank()
+    }
+
+    historicoCard.addView(
+        txt(
+            "Total de comprovativos: ${registos.size}",
+            14f,
+            white,
+            true
+        )
+    )
+
+    historicoCard.addView(
+        txt(
+            "Valores confirmados: 0 MT",
+            13f,
+            green,
+            true
+        )
+    )
+
+    historicoCard.addView(
+        txt(
+            "Os registos novos ficam pendentes até serem verificados.",
+            11f,
+            yellow
+        )
+    )
+
+    if (registos.isEmpty()) {
+
+        historicoCard.addView(
+            txt(
+                "Ainda não existem comprovativos registados.",
+                13f,
+                lightBlue
+            )
+        )
+
+    } else {
+
+        registos.take(20).forEach { registo ->
+
+            val partes = registo.split("|")
+
+            if (partes.size == 6) {
+
+                val data = partes[0].toLongOrNull() ?: 0L
+
+                val dataTexto = if (data > 0L) {
+                    java.text.SimpleDateFormat(
+                        "dd/MM/yyyy HH:mm",
+                        java.util.Locale.getDefault()
+                    ).format(java.util.Date(data))
+                } else {
+                    "Data desconhecida"
+                }
+
+                val pessoa = try {
+                    String(
+                        android.util.Base64.decode(
+                            partes[3],
+                            android.util.Base64.DEFAULT
+                        ),
+                        Charsets.UTF_8
+                    )
+                } catch (e: Exception) {
+                    ""
+                }
+
+                val linha = cardBox(cardNavy, borderBlue)
+
+                linha.addView(
+                    txt(
+                        "${partes[1]}  •  ${partes[2]} MT",
+                        14f,
+                        white,
+                        true
+                    )
+                )
+
+                linha.addView(
+                    txt(
+                        "Remetente: ${pessoa.ifBlank { "Não indicado" }}",
+                        12f,
+                        lightBlue
+                    )
+                )
+
+                linha.addView(
+                    txt(dataTexto, 11f, lightBlue)
+                )
+
+                linha.addView(
+                    txt("● PENDENTE", 12f, yellow, true)
+                )
+
+                historicoCard.addView(linha)
+            }
+        }
+    }
+
+    content.addView(historicoCard)
 }
+
     // ============================================================
     // 10. BARRA DE NAVEGAÇÃO
     // ============================================================
