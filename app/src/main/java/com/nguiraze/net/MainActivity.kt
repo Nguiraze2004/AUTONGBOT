@@ -230,7 +230,8 @@ private val ussdTerminadoReceiver = object : BroadcastReceiver() {
     // 4. NAVEGAÇÃO E SINCRONIZAÇÃO USSD
     // ============================================================
 
-    private fun navegarPara(aba: String) {
+    
+private fun navegarPara(aba: String) {
     abaAtual = aba
     sincronizarEstadoUssd()
     content.removeAllViews()
@@ -245,10 +246,10 @@ private val ussdTerminadoReceiver = object : BroadcastReceiver() {
         "Pagamentos" -> telaPagamentos()
         else -> telaInicio()
     }
-    }
 
-        renderizarBarraInferior()
-    }
+    renderizarBarraInferior()
+}
+
 
     private fun sincronizarEstadoUssd() {
         val ativoNoServico = ussdPedidoPrefs.getBoolean("ativo", false)
