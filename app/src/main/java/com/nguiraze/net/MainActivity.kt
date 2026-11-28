@@ -707,9 +707,25 @@ private val ussdTerminadoReceiver = object : BroadcastReceiver() {
             addView(txt("Este aparelho · Painel local", 11f, lightBlue))
         }
 
-        topBar.addView(titulo, LinearLayout.LayoutParams(0, -2, 1f))
-        topBar.addView(txt("▣", 20f, lightBlue))
-        topBar.addView(txt("  $", 20f, yellow))
+        // BOTÃO TABELA
+topBar.addView(
+    txt("▣", 20f, lightBlue, true).apply {
+        setPadding(dp(8), dp(8), dp(8), dp(8))
+        setOnClickListener {
+            navegarPara("Tabela")
+        }
+    }
+)
+
+// BOTÃO PAGAMENTOS
+topBar.addView(
+    txt("\$", 20f, yellow, true).apply {
+        setPadding(dp(8), dp(8), dp(8), dp(8))
+        setOnClickListener {
+            navegarPara("Pagamentos")
+        }
+    }
+)
 
         content.addView(topBar)
 
