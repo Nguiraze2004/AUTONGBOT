@@ -78,12 +78,9 @@ class UssdAccessibilityService : AccessibilityService() {
     }
 
     private val padraoSucesso = Regex(
-        """transferiste\s+com\s+sucesso\s+(\d+)\s*mb.*?para\s+o\s+numero\s+(258\d{9})""",
-        setOf(
-            RegexOption.IGNORE_CASE,
-            RegexOption.DOT_MATCHES_ALL
-        )
-    )
+    """transferiste\s+com\s+sucesso""",
+    RegexOption.IGNORE_CASE
+)
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null) return
