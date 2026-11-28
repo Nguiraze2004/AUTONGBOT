@@ -141,6 +141,18 @@ private val ussdTerminadoReceiver = object : BroadcastReceiver() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (
+    ActivityCompat.checkSelfPermission(
+        this,
+        Manifest.permission.RECEIVE_SMS
+    ) != PackageManager.PERMISSION_GRANTED
+) {
+    ActivityCompat.requestPermissions(
+        this,
+        arrayOf(Manifest.permission.RECEIVE_SMS),
+        1001
+    )
+        }
 
         carregarContadores()
         verificarNovoDia()
