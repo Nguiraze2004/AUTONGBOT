@@ -2724,7 +2724,8 @@ private fun telaPagamentos() {
     }
 
     // ATUALIZAR HISTÓRICO
-    fun atualizarHistorico() {
+    atualizarHistorico = {
+        
 
         listaHistorico.removeAllViews()
 
