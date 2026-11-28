@@ -206,17 +206,6 @@ private val ussdTerminadoReceiver = object : BroadcastReceiver() {
         }
     }
 
-    override fun onResume() {
-        super.onResume()
-        verificarNovoDia()
-        sincronizarEstadoUssd()
-        processarProximaFilaSePossivel()
-
-        if (::content.isInitialized) {
-            navegarPara(abaAtual)
-        }
-    }
-
     override fun onStart() {
         super.onStart()
 
