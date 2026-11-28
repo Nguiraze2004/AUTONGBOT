@@ -740,8 +740,6 @@ topBar.addView(
 
 content.addView(topBar)
 
-        
-        content.addView(topBar)
 
         // PESQUISA
         val pesquisa = EditText(this).apply {
