@@ -475,12 +475,24 @@ class UssdAccessibilityService : AccessibilityService() {
     }
 
     private fun clicarBotaoOk(node: AccessibilityNodeInfo, nivel: Int): Boolean {
-        val alvo = encontrarNoPorRotulo(node, setOf("OK"), nivel)
-        if (alvo != null) {
-            if (clicarNoOuPai(alvo)) return true
-            if (tocarCentroDoNo(alvo)) return true
-        }
+    val alvo = encontrarNoPorRotulo(node, setOf("OK"), nivel)
+
+    if (alvo == null) {
+        Log.d("NGUIRAZE_USSD", "BOTAO OK NAO ENCONTRADO")
         return false
+    }
+
+    val clicou = clicarNoOuPai(alvo)
+
+    Log.d("NGUIRAZE_USSD", "RESULTADO CLIQUE OK: $clicou")
+
+    if (clicou) return true
+
+    val tocou = tocarCentroDoNo(alvo)
+
+    Log.d("NGUIRAZE_USSD", "RESULTADO TOQUE OK: $tocou")
+
+    return tocou
     }
 
     private fun analisarElementos(
