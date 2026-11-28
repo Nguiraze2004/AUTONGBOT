@@ -1759,6 +1759,400 @@ content.addView(topBar)
     }
 
     // ============================================================
+// TABELA DE PREÇOS
+// ============================================================
+
+private fun telaTabela() {
+
+    val prefs = preferencias
+
+    // Carregar pacotes guardados
+    val pacotes = mutableListOf<Pair<Int, Int>>()
+
+    val dadosGuardados = prefs.getString("tabela_pacotes", "") ?: ""
+
+    if (dadosGuardados.isNotBlank()) {
+        dadosGuardados.split(";").forEach { item ->
+            val partes = item.split(":")
+            if (partes.size == 2) {
+                val preco = partes[0].toIntOrNull()
+                val mb = partes[1].toIntOrNull()
+
+                if (preco != null && mb != null) {
+                    pacotes.add(preco to mb)
+                }
+            }
+        }
+    }
+
+    fun guardarPacotes() {
+        val dados = pacotes.joinToString(";") {
+            "${it.first}:${it.second}"
+        }
+        prefs.edit().putString("tabela_pacotes", dados).apply()
+    }
+
+    fun campo(hintTexto: String, valor: String = ""): EditText {
+        return EditText(this).apply {
+            hint = hintTexto
+            setText(valor)
+            setTextColor(white)
+            setHintTextColor(lightBlue)
+            textSize = 15f
+            setPadding(dp(12), dp(10), dp(12), dp(10))
+            background = roundRect(bgTop, borderBlue, 12)
+            inputType = InputType.TYPE_CLASS_NUMBER
+        }
+    }
+
+    // CABEÇALHO
+    content.addView(
+        txt("Tabela de preços", 20f, white, true)
+    )
+
+    content.addView(
+        txt("Pacotes e custos de venda", 12f, lightBlue)
+    )
+
+    // CARTÃO PRINCIPAL
+    val cartao = cardBox(cardDark, borderBlue)
+
+    var expandida = true
+
+    val titulo = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+    }
+
+    titulo.addView(
+        txt("☷", 23f, green, true)
+    )
+
+    val tituloTexto = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        setPadding(dp(12), 0, 0, 0)
+    }
+
+    tituloTexto.addView(
+        txt("Tabela de preços", 17f, white, true)
+    )
+
+    val estado = txt(
+        if (pacotes.isEmpty()) "● Sem pacotes"
+        else "● ${pacotes.size} pacotes",
+        13f,
+        yellow
+    )
+
+    tituloTexto.addView(estado)
+
+    titulo.addView(
+        tituloTexto,
+        LinearLayout.LayoutParams(0, -2, 1f)
+    )
+
+    val seta = txt("⌃", 22f, lightBlue, true)
+    titulo.addView(seta)
+
+    cartao.addView(titulo)
+
+    val area = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        setPadding(0, dp(15), 0, 0)
+    }
+
+    cartao.addView(area)
+
+    fun atualizarLista() {
+        area.removeAllViews()
+
+        estado.text = if (pacotes.isEmpty()) {
+            "● Sem pacotes"
+        } else {
+            "● ${pacotes.size} pacotes"
+        }
+
+        if (pacotes.isEmpty()) {
+            area.addView(
+                txt(
+                    "Nenhum pacote. Importa uma tabela ou adiciona um pacote.",
+                    13f,
+                    lightBlue
+                )
+            )
+        }
+
+        pacotes.forEachIndexed { indice, pacote ->
+
+            val linha = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(dp(10), dp(10), dp(10), dp(10))
+                background = roundRect(cardNavy, borderBlue, 10)
+            }
+
+            val informacao = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+            }
+
+            informacao.addView(
+                txt("${pacote.first} MT", 16f, white, true)
+            )
+
+            informacao.addView(
+                txt("${pacote.second} MB", 13f, green)
+            )
+
+            linha.addView(
+                informacao,
+                LinearLayout.LayoutParams(0, -2, 1f)
+            )
+
+            linha.addView(
+                smallActionBtn("Editar", cyan) {
+                    abrirEditor(indice)
+                }
+            )
+
+            linha.addView(
+                smallActionBtn(" X ", red) {
+                    pacotes.removeAt(indice)
+                    guardarPacotes()
+                    atualizarLista()
+                }
+            )
+
+            val params = LinearLayout.LayoutParams(-1, -2)
+            params.bottomMargin = dp(7)
+            area.addView(linha, params)
+        }
+
+        // BOTÃO IMPORTAR
+        val importar = TextView(this).apply {
+            text = "Importar tabela"
+            textSize = 16f
+            setTextColor(Color.BLACK)
+            setTypeface(null, Typeface.BOLD)
+            gravity = Gravity.CENTER
+            setPadding(0, dp(17), 0, dp(17))
+            background = roundRect(green, green, 18)
+            setOnClickListener {
+                val entrada = EditText(this@MainActivity).apply {
+                    hint = "Exemplo:\n10=450\n15=650\n20=900"
+                    setTextColor(white)
+                    setHintTextColor(lightBlue)
+                    minLines = 5
+                    gravity = Gravity.TOP
+                    inputType = InputType.TYPE_CLASS_TEXT or
+                        InputType.TYPE_TEXT_FLAG_MULTI_LINE
+                }
+
+                android.app.AlertDialog.Builder(this@MainActivity)
+                    .setTitle("Importar pacotes")
+                    .setMessage("Um pacote por linha: preço=MB")
+                    .setView(entrada)
+                    .setNegativeButton("Cancelar", null)
+                    .setPositiveButton("Importar") { _, _ ->
+
+                        var quantidade = 0
+
+                        entrada.text.toString().lines().forEach { texto ->
+                            val partes = texto.trim().split("=")
+
+                            if (partes.size == 2) {
+                                val preco = partes[0].trim().toIntOrNull()
+                                val mb = partes[1].trim().toIntOrNull()
+
+                                if (preco != null && mb != null &&
+                                    preco > 0 && mb > 0
+                                ) {
+                                    pacotes.removeAll { it.first == preco }
+                                    pacotes.add(preco to mb)
+                                    quantidade++
+                                }
+                            }
+                        }
+
+                        guardarPacotes()
+                        atualizarLista()
+
+                        Toast.makeText(
+                            this@MainActivity,
+                            "$quantidade pacotes importados",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                    .show()
+            }
+        }
+
+        area.addView(importar)
+
+        // ADICIONAR MANUALMENTE
+        val adicionar = TextView(this).apply {
+            text = "+  Adicionar pacote manualmente"
+            textSize = 15f
+            setTextColor(green)
+            setTypeface(null, Typeface.BOLD)
+            gravity = Gravity.CENTER
+            setPadding(0, dp(17), 0, dp(17))
+            background = roundRect(bgTop, green, 18)
+
+            setOnClickListener {
+                abrirEditor(null)
+            }
+        }
+
+        val margem = LinearLayout.LayoutParams(-1, -2)
+        margem.topMargin = dp(10)
+        area.addView(adicionar, margem)
+
+        // CUSTO POR PACOTE
+        area.addView(
+            txt(
+                "Custo por pacote (um por linha: preço=custo, ex.: 10=7)",
+                12f,
+                lightBlue
+            ).apply {
+                setPadding(0, dp(15), 0, dp(6))
+            }
+        )
+
+        val custos = EditText(this).apply {
+            hint = "Ex: 10=7\n177=140"
+            setTextColor(white)
+            setHintTextColor(lightBlue)
+            setText(prefs.getString("tabela_custos", "") ?: "")
+            minLines = 4
+            gravity = Gravity.TOP
+            setPadding(dp(12), dp(12), dp(12), dp(12))
+            background = roundRect(bgTop, borderBlue, 12)
+            inputType = InputType.TYPE_CLASS_TEXT or
+                InputType.TYPE_TEXT_FLAG_MULTI_LINE
+
+            addTextChangedListener(object : android.text.TextWatcher {
+                override fun beforeTextChanged(
+                    s: CharSequence?, start: Int, count: Int, after: Int
+                ) {}
+
+                override fun onTextChanged(
+                    s: CharSequence?, start: Int, before: Int, count: Int
+                ) {
+                    prefs.edit().putString(
+                        "tabela_custos",
+                        s.toString()
+                    ).apply()
+                }
+
+                override fun afterTextChanged(
+                    s: android.text.Editable?
+                ) {}
+            })
+        }
+
+        area.addView(custos)
+
+        // CUSTO POR GB
+        area.addView(
+            txt(
+                "Custo por GB para os pacotes que não estão acima (MT)",
+                12f,
+                lightBlue
+            ).apply {
+                setPadding(0, dp(15), 0, dp(6))
+            }
+        )
+
+        val custoGb = campo(
+            "Ex: 12",
+            prefs.getString("tabela_custo_gb", "") ?: ""
+        )
+
+        custoGb.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(
+                s: CharSequence?, start: Int, count: Int, after: Int
+            ) {}
+
+            override fun onTextChanged(
+                s: CharSequence?, start: Int, before: Int, count: Int
+            ) {
+                prefs.edit().putString(
+                    "tabela_custo_gb",
+                    s.toString()
+                ).apply()
+            }
+
+            override fun afterTextChanged(
+                s: android.text.Editable?
+            ) {}
+        })
+
+        area.addView(custoGb)
+    }
+
+    // EDITAR OU ADICIONAR PACOTE
+    fun abrirEditor(indice: Int?) {
+
+        val precoCampo = campo("Preço em MT")
+        val mbCampo = campo("Quantidade em MB")
+
+        if (indice != null) {
+            precoCampo.setText(pacotes[indice].first.toString())
+            mbCampo.setText(pacotes[indice].second.toString())
+        }
+
+        val formulario = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20), dp(8), dp(20), dp(8))
+            addView(precoCampo)
+            addView(mbCampo)
+        }
+
+        android.app.AlertDialog.Builder(this)
+            .setTitle(
+                if (indice == null) "Adicionar pacote"
+                else "Editar pacote"
+            )
+            .setView(formulario)
+            .setNegativeButton("Cancelar", null)
+            .setPositiveButton("Guardar") { _, _ ->
+
+                val preco = precoCampo.text.toString().toIntOrNull()
+                val mb = mbCampo.text.toString().toIntOrNull()
+
+                if (preco != null && mb != null && preco > 0 && mb > 0) {
+
+                    if (indice == null) {
+                        pacotes.add(preco to mb)
+                    } else {
+                        pacotes[indice] = preco to mb
+                    }
+
+                    guardarPacotes()
+                    atualizarLista()
+
+                } else {
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Introduz um preço e uma quantidade de MB válidos.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+            .show()
+    }
+
+    titulo.setOnClickListener {
+        expandida = !expandida
+        area.visibility = if (expandida) View.VISIBLE else View.GONE
+        seta.text = if (expandida) "⌃" else "⌄"
+    }
+
+    atualizarLista()
+    content.addView(cartao)
+}
+
+    // ============================================================
     // 10. BARRA DE NAVEGAÇÃO
     // ============================================================
 
