@@ -45,18 +45,21 @@ class UssdAccessibilityService : AccessibilityService() {
         if (!pedidoPrefs.getBoolean("ativo", false)) return@Runnable
 
         val motivo = if (passoAtual == 5) {
-            "8s esgotados sem 'transferiste com sucesso' (nao concluido)"
+            "8s esgotados sem 'Transferiste com sucesso' (marcado como erro)"
         } else {
             "8s esgotados aguardando janela do passo $passoAtual"
         }
 
         preferencias.edit()
             .putString("ultimo_erro_ussd", motivo)
-            .putString("ultimo_estado_ussd", if (passoAtual == 5) "INCERTO_OU_FALHA" else "ENCERRADO_TIMEOUT")
+            .putString(
+                "ultimo_estado_ussd",
+                if (passoAtual == 5) "SEM_CONFIRMACAO_SUCESSO" else "ENCERRADO_TIMEOUT"
+            )
             .apply()
 
         Log.d("NGUIRAZE_USSD", "Encerrado automaticamente: $motivo")
-        encerrarExecucao("TIMEOUT_8S")
+        encerrarExecucao(if (passoAtual == 5) "SEM_CONFIRMACAO_SUCESSO" else "TIMEOUT_8S")
     }
 
     private val padraoSucesso = Regex(
@@ -125,78 +128,52 @@ class UssdAccessibilityService : AccessibilityService() {
         }
 
         val normalizada = normalizarTexto(leitura)
+        val textoLimpo = normalizada.split(" ").filter { it.isNotBlank() }.joinToString(" ")
+        val temBotaoOk = temBotaoOk(raiz, 0)
+        val semCampoEditavel = encontrarCampoEditavel(raiz, 0) == null
 
-        // 2. Passo 5: Mensagem final -> clica "OK" sempre, com ou sem sucesso
-        // RESULTADO FINAL: sucesso ou falha
-        val resultadoFinal =
-            normalizada.contains("transferiste com sucesso") ||
-            normalizada.contains("transacao sem sucesso")
+        // 2. Tela final: se ja enviou o numero (passo 5) ou apareceu mensagem final com OK
+        val ehTelaFinal = passoAtual == 5 ||
+            textoLimpo.contains("transferiste com sucesso") ||
+            textoLimpo.contains("transferiste") ||
+            textoLimpo.contains("transacao sem sucesso") ||
+            (semCampoEditavel && temBotaoOk && passoAtual >= 4)
 
-        if (resultadoFinal) {
+        if (ehTelaFinal) {
             cancelarTimers()
-
-            val textoLimpo = normalizada
-                .split(" ")
-                .filter { it.isNotBlank() }
-                .joinToString(" ")
+            val clicouOk = clicarBotaoOk(raiz, 0)
 
             if (textoLimpo.contains("transferiste com sucesso")) {
-
                 val match = padraoSucesso.find(textoLimpo)
+                val megas = match?.groupValues?.getOrNull(1)?.toIntOrNull()
+                    ?: pedidoPrefs.getInt("megas", 0)
+                val numero = match?.groupValues?.getOrNull(2)
+                    ?: (pedidoPrefs.getString("numero", "") ?: "")
 
-                val megas = match?.groupValues
-                    ?.getOrNull(1)?.toIntOrNull()
+                val assinatura = "$numero-$megas"
+                val assinaturaAnterior = preferencias.getString("ultima_assinatura", "")
+                val horaAnterior = preferencias.getLong("hora_ultima_assinatura", 0L)
 
-                val numero = match?.groupValues
-                    ?.getOrNull(2)
-
-                val megasPedido = pedidoPrefs.getInt("megas", 0)
-                val numeroPedido =
-                    pedidoPrefs.getString("numero", "") ?: ""
-
-                if (
-                    megas == megasPedido &&
-                    numero == numeroPedido
-                ) {
+                if (assinatura != assinaturaAnterior || agora - horaAnterior >= 10_000L) {
                     preferencias.edit()
-                        .putString(
-                            "ultimo_resultado",
-                            "CONCLUIDO: $megas MB para $numero"
-                        )
+                        .putString("ultima_assinatura", assinatura)
+                        .putLong("hora_ultima_assinatura", agora)
+                        .putString("ultimo_resultado", "CONCLUIDO: $megas MB para $numero")
                         .putString("ultimo_estado_ussd", "CONCLUIDO")
-                        .apply()
-
-                    clicarBotaoOk(raiz, 0)
-                    encerrarExecucao("CONCLUIDO")
-                } else {
-                    preferencias.edit()
-                        .putString(
-                            "ultimo_resultado",
-                            "CONFIRMACAO NAO CORRESPONDE AO PEDIDO"
-                        )
-                        .putString("ultimo_estado_ussd", "INCERTO")
+                        .putString("ultimo_erro_ussd", if (clicouOk) "Sucesso + OK clicado" else "Sucesso (OK nao encontrado)")
                         .apply()
                 }
-
+                encerrarExecucao("CONCLUIDO")
             } else {
                 preferencias.edit()
-                    .putString(
-                        "ultimo_resultado",
-                        "NAO_CONCLUIDO: $textoLimpo"
-                    )
-                    .putString(
-                        "ultimo_estado_ussd",
-                        "SEM_CONFIRMACAO_SUCESSO"
-                    )
+                    .putString("ultimo_resultado", "ERRO: $textoLimpo")
+                    .putString("ultimo_estado_ussd", "SEM_CONFIRMACAO_SUCESSO")
+                    .putString("ultimo_erro_ussd", if (clicouOk) "Sem 'Transferiste com sucesso' + OK clicado" else "Sem 'Transferiste com sucesso' (OK nao clicado)")
                     .apply()
-
-                clicarBotaoOk(raiz, 0)
                 encerrarExecucao("SEM_CONFIRMACAO_SUCESSO")
             }
-
             return
         }
-  
 
         if (envioEmAndamento) return
         if (leitura == ultimaLeituraEnviada && (agora - ultimoEnvioMs) < 2000L) return
@@ -503,6 +480,10 @@ class UssdAccessibilityService : AccessibilityService() {
             if (achado != null) return achado
         }
         return null
+    }
+
+    private fun temBotaoOk(node: AccessibilityNodeInfo, nivel: Int): Boolean {
+        return encontrarNoPorRotulo(node, setOf("OK"), nivel) != null
     }
 
     private fun clicarBotaoEnvio(node: AccessibilityNodeInfo, nivel: Int): Boolean {
