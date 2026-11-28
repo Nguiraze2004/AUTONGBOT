@@ -2615,7 +2615,7 @@ private fun telaPagamentos() {
         setTextColor(white)
         setHintTextColor(lightBlue)
         textSize = 13f
-        singleLine = true
+        isSingleLine = true
         setPadding(dp(12), dp(12), dp(12), dp(12))
         background = roundRect(bgTop, borderBlue, 12)
     }
