@@ -10,6 +10,7 @@ import android.graphics.Rect
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
+import android.content.Intent
 import android.os.Looper
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
