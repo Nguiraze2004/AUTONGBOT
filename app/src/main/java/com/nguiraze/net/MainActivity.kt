@@ -117,14 +117,6 @@ class MainActivity : Activity() {
         getSharedPreferences("ussd_pedido_ativo", Context.MODE_PRIVATE)
     }
 
-    private val ussdDebugPrefs by lazy {
-    getSharedPreferences("ussd_debug", Context.MODE_PRIVATE)
-    }
-
-    private val ussdPedidoPrefs by lazy {
-    getSharedPreferences("ussd_pedido_ativo", Context.MODE_PRIVATE)
-    }
-
 // AVISO DE TRANSFERÊNCIA TERMINADA
 private val ussdTerminadoReceiver = object : BroadcastReceiver() {
     override fun onReceive(context: Context?, intent: Intent?) {
