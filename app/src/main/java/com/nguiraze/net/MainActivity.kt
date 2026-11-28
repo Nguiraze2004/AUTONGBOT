@@ -23,6 +23,9 @@ import android.widget.Toast
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import android.content.BroadcastReceiver
+import android.content.IntentFilter
+import android.os.Build
 
 // ============================================================
 // 1. MODELOS
