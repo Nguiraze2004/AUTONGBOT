@@ -127,41 +127,76 @@ class UssdAccessibilityService : AccessibilityService() {
         val normalizada = normalizarTexto(leitura)
 
         // 2. Passo 5: Mensagem final -> clica "OK" sempre, com ou sem sucesso
-        if (passoAtual == 5 || normalizada.contains("transferiste") || normalizada.contains("transacao sem sucesso")) {
-            cancelarTimers()
-            val textoLimpo = normalizada.split(" ").filter { it.isNotBlank() }.joinToString(" ")
+        // RESULTADO FINAL: sucesso ou falha
+        val resultadoFinal =
+            normalizada.contains("transferiste com sucesso") ||
+            normalizada.contains("transacao sem sucesso")
 
-            clicarBotaoOk(raiz, 0)
+        if (resultadoFinal) {
+            cancelarTimers()
+
+            val textoLimpo = normalizada
+                .split(" ")
+                .filter { it.isNotBlank() }
+                .joinToString(" ")
 
             if (textoLimpo.contains("transferiste com sucesso")) {
+
                 val match = padraoSucesso.find(textoLimpo)
-                val megas = match?.groupValues?.getOrNull(1)?.toIntOrNull()
-                    ?: pedidoPrefs.getInt("megas", 0)
-                val numero = match?.groupValues?.getOrNull(2)
-                    ?: (pedidoPrefs.getString("numero", "") ?: "")
 
-                val assinatura = "$numero-$megas"
-                val assinaturaAnterior = preferencias.getString("ultima_assinatura", "")
-                val horaAnterior = preferencias.getLong("hora_ultima_assinatura", 0L)
+                val megas = match?.groupValues
+                    ?.getOrNull(1)?.toIntOrNull()
 
-                if (assinatura != assinaturaAnterior || agora - horaAnterior >= 10_000L) {
+                val numero = match?.groupValues
+                    ?.getOrNull(2)
+
+                val megasPedido = pedidoPrefs.getInt("megas", 0)
+                val numeroPedido =
+                    pedidoPrefs.getString("numero", "") ?: ""
+
+                if (
+                    megas == megasPedido &&
+                    numero == numeroPedido
+                ) {
                     preferencias.edit()
-                        .putString("ultima_assinatura", assinatura)
-                        .putLong("hora_ultima_assinatura", agora)
-                        .putString("ultimo_resultado", "CONCLUIDO: $megas MB para $numero")
+                        .putString(
+                            "ultimo_resultado",
+                            "CONCLUIDO: $megas MB para $numero"
+                        )
                         .putString("ultimo_estado_ussd", "CONCLUIDO")
                         .apply()
+
+                    clicarBotaoOk(raiz, 0)
+                    encerrarExecucao("CONCLUIDO")
+                } else {
+                    preferencias.edit()
+                        .putString(
+                            "ultimo_resultado",
+                            "CONFIRMACAO NAO CORRESPONDE AO PEDIDO"
+                        )
+                        .putString("ultimo_estado_ussd", "INCERTO")
+                        .apply()
                 }
-                encerrarExecucao("CONCLUIDO")
+
             } else {
                 preferencias.edit()
-                    .putString("ultimo_resultado", "NAO_CONCLUIDO: $textoLimpo")
-                    .putString("ultimo_estado_ussd", "SEM_CONFIRMACAO_SUCESSO")
+                    .putString(
+                        "ultimo_resultado",
+                        "NAO_CONCLUIDO: $textoLimpo"
+                    )
+                    .putString(
+                        "ultimo_estado_ussd",
+                        "SEM_CONFIRMACAO_SUCESSO"
+                    )
                     .apply()
+
+                clicarBotaoOk(raiz, 0)
                 encerrarExecucao("SEM_CONFIRMACAO_SUCESSO")
             }
+
             return
         }
+  
 
         if (envioEmAndamento) return
         if (leitura == ultimaLeituraEnviada && (agora - ultimoEnvioMs) < 2000L) return
