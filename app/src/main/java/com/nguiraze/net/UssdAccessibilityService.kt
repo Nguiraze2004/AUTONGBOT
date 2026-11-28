@@ -520,27 +520,32 @@ class UssdAccessibilityService : AccessibilityService() {
         aguardandoProximaJanelaDesdeMs = 0L
     }
 
-    private fun encerrarExecucao(motivo: String) {
+private fun encerrarExecucao(motivo: String) {
 
-        cancelarTimers()
+    cancelarTimers()
 
-        envioEmAndamento = false
-        resultadoJaTratado = false
+    envioEmAndamento = false
+    resultadoJaTratado = false
 
-        passoAtual = 1
-        ultimaLeituraEnviada = ""
-        ultimoEnvioMs = 0L
+    passoAtual = 1
+    ultimaLeituraEnviada = ""
+    ultimoEnvioMs = 0L
 
-        pedidoPrefs.edit()
-            .putBoolean("ativo", false)
-            .putString("ultimo_fim_motivo", motivo)
-            .apply()
+    pedidoPrefs.edit()
+        .putBoolean("ativo", false)
+        .putString("ultimo_fim_motivo", motivo)
+        .apply()
 
-        Log.d(
-            "NGUIRAZE_USSD",
-            "Execução encerrada: $motivo"
-        )
-    }
+    sendBroadcast(
+        Intent("com.nguiraze.net.USSD_TERMINADO")
+            .setPackage(applicationContext.packageName)
+    )
+
+    Log.d(
+        "NGUIRAZE_USSD",
+        "Execução encerrada: $motivo"
+    )
+}
 
     private fun normalizarTexto(entrada: String): String {
 
