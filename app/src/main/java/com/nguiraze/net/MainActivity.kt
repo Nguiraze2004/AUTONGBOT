@@ -2619,7 +2619,7 @@ private fun telaPagamentos() {
         setPadding(dp(12), dp(12), dp(12), dp(12))
         background = roundRect(bgTop, borderBlue, 12)
     }
-
+    var atualizarHistorico: (() -> Unit)? = null
     val listaHistorico = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
     }
