@@ -1910,7 +1910,7 @@ private fun telaTabela() {
 
             linha.addView(
                 smallActionBtn("Editar", cyan) {
-                    abrirEditor(indice)
+                    abrirEditor?.invoke(indice)
                 }
             )
 
