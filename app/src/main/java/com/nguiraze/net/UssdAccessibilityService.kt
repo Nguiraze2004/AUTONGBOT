@@ -186,6 +186,16 @@ class UssdAccessibilityService : AccessibilityService() {
         val mensagemFalha =
             textoLimpo.contains("transacao sem sucesso")
 
+                // Evita tratar uma pergunta de confirmação como resultado final.
+        val pareceConfirmacao =
+            textoLimpo.contains("deseja confirmar") ||
+            textoLimpo.contains("pretende confirmar") ||
+            textoLimpo.contains("confirma a transferencia") ||
+            textoLimpo.contains("confirmar transferencia") ||
+            textoLimpo.contains("confirme a transferencia") ||
+            textoLimpo.contains("para confirmar")
+
+        // Identifica o resultado final.
         val ehTelaFinal =
             mensagemSucesso ||
             mensagemFalha ||
@@ -195,15 +205,6 @@ class UssdAccessibilityService : AccessibilityService() {
                 !temCampoEditavel &&
                 !pareceConfirmacao
             )
-
-        // Evita tratar uma pergunta de confirmação como resultado final.
-        val pareceConfirmacao =
-            textoLimpo.contains("deseja confirmar") ||
-            textoLimpo.contains("pretende confirmar") ||
-            textoLimpo.contains("confirma a transferencia") ||
-            textoLimpo.contains("confirmar transferencia") ||
-            textoLimpo.contains("confirme a transferencia") ||
-            textoLimpo.contains("para confirmar")
 
         // Resultado final:
         // 1. Mensagem explícita de sucesso.
