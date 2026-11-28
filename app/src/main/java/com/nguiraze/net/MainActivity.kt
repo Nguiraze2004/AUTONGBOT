@@ -2634,7 +2634,7 @@ private fun telaPagamentos() {
         filtros.addView(
             smallActionBtn(nome, cyan) {
                 filtroAtual = nome
-                atualizarHistorico()
+                atualizarHistorico?.invoke()
             },
             LinearLayout.LayoutParams(0, -2, 1f)
         )
@@ -2685,7 +2685,7 @@ private fun telaPagamentos() {
                     Toast.LENGTH_SHORT
                 ).show()
 
-                atualizarHistorico()
+                atualizarHistorico?.invoke()
             }
             .show()
     }
@@ -2965,7 +2965,7 @@ private fun telaPagamentos() {
                                         )
                                         .apply()
 
-                                    atualizarHistorico()
+                                    atualizarHistorico?.invoke()
                                 }
                             }
                             .show()
@@ -2986,7 +2986,7 @@ private fun telaPagamentos() {
             override fun onTextChanged(
                 s: CharSequence?, start: Int, before: Int, count: Int
             ) {
-                atualizarHistorico()
+                atualizarHistorico?.invoke()
             }
 
             override fun afterTextChanged(
@@ -2995,7 +2995,7 @@ private fun telaPagamentos() {
         }
     )
 
-    atualizarHistorico()
+    atualizarHistorico?.invoke()
 
     content.addView(historicoCard)
 }
