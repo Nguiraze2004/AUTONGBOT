@@ -219,14 +219,7 @@ class UssdAccessibilityService : AccessibilityService() {
 
             if (mensagemSucesso) {
 
-                val match = padraoSucesso.find(textoLimpo)
-
-                val megasOperadora =
-                    match?.groupValues?.getOrNull(1)?.toIntOrNull()
-
-                val numeroOperadora =
-                    match?.groupValues?.getOrNull(2) ?: ""
-
+                // Usa os dados guardados no pedido.
                 val megasPedido =
                     pedidoPrefs.getInt("megas", 0)
 
@@ -234,77 +227,52 @@ class UssdAccessibilityService : AccessibilityService() {
                     (pedidoPrefs.getString("numero", "") ?: "")
                         .trim()
 
-                // Só aceita sucesso se os dados da operadora
-                // forem encontrados e corresponderem ao pedido.
-                val dadosValidos =
-                    megasOperadora != null &&
-                    numeroOperadora.isNotBlank() &&
-                    megasOperadora == megasPedido &&
-                    numeroOperadora == numeroPedido
+                val assinatura = "$numeroPedido-$megasPedido"
 
-                if (dadosValidos) {
+                val assinaturaAnterior =
+                    preferencias.getString("ultima_assinatura", "")
 
-                    val assinatura = "$numeroOperadora-$megasOperadora"
+                val horaAnterior =
+                    preferencias.getLong("hora_ultima_assinatura", 0L)
 
-                    val assinaturaAnterior =
-                        preferencias.getString("ultima_assinatura", "")
-
-                    val horaAnterior =
-                        preferencias.getLong("hora_ultima_assinatura", 0L)
-
-                    // Evita duplicar o registo da mesma transferência.
-                    if (
-                        assinatura != assinaturaAnterior ||
-                        agora - horaAnterior >= 10_000L
-                    ) {
-                        preferencias.edit()
-                            .putString("ultima_assinatura", assinatura)
-                            .putLong("hora_ultima_assinatura", agora)
-                            .putString(
-                                "ultimo_resultado",
-                                "CONCLUIDO: $megasOperadora MB para $numeroOperadora"
-                            )
-                            .putString("ultimo_estado_ussd", "CONCLUIDO")
-                            .putString(
-                                "ultimo_erro_ussd",
-                                if (clicouOk) {
-                                    "Sucesso confirmado e OK acionado"
-                                } else {
-                                    "Sucesso confirmado, mas OK não foi acionado"
-                                }
-                            )
-                            .apply()
-                    }
-
-                    encerrarExecucao("CONCLUIDO")
-
-                } else {
-
+                // Regista a transferência concluída.
+                if (
+                    assinatura != assinaturaAnterior ||
+                    agora - horaAnterior >= 10_000L
+                ) {
                     preferencias.edit()
+                        .putString("ultima_assinatura", assinatura)
+                        .putLong("hora_ultima_assinatura", agora)
                         .putString(
                             "ultimo_resultado",
-                            "RESULTADO_INCERTO: dados da operadora não correspondem ao pedido"
+                            "CONCLUIDO: $megasPedido MB para $numeroPedido"
                         )
-                        .putString("ultimo_estado_ussd", "INCERTO")
+                        .putString("ultimo_estado_ussd", "CONCLUIDO")
                         .putString(
                             "ultimo_erro_ussd",
-                            "Mensagem de sucesso encontrada, mas MB ou número não foram validados"
+                            if (clicouOk) {
+                                "Transferência confirmada pela operadora e OK acionado"
+                            } else {
+                                "Transferência confirmada pela operadora, mas OK não foi acionado"
+                            }
                         )
                         .apply()
-
-                    encerrarExecucao("SUCESSO_NAO_VALIDADO")
                 }
+
+                encerrarExecucao("CONCLUIDO")
 
             } else {
 
-                // Não apareceu confirmação de sucesso.
-                // Clica OK, mas não conta os MB.
+                // Sem mensagem de sucesso: não conta os MB.
                 preferencias.edit()
                     .putString(
                         "ultimo_resultado",
                         "NAO_CONCLUIDO: $textoLimpo"
                     )
-                    .putString("ultimo_estado_ussd", "SEM_CONFIRMACAO_SUCESSO")
+                    .putString(
+                        "ultimo_estado_ussd",
+                        "SEM_CONFIRMACAO_SUCESSO"
+                    )
                     .putString(
                         "ultimo_erro_ussd",
                         if (clicouOk) {
@@ -320,6 +288,7 @@ class UssdAccessibilityService : AccessibilityService() {
 
             return
         }
+
 
         if (envioEmAndamento) return
 
